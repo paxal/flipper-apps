@@ -1,0 +1,7 @@
+dist/
+.vscode/
+.clang-format
+.clangd
+*.o
+*.d
+*.fap
