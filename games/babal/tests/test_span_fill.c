@@ -109,12 +109,15 @@ int main(void) {
     babal_render_frame(&fb, &holes, BABAL_Q16_FROM_FLOAT(0.0f), 0, 0, true, false);
     check_or_record("holes_p0", &fb);
 
-    /* Ball only: empty track still draws ball. */
+    /* Ball only: empty track still draws ball (dark disc + bright outline). */
     babal_render_frame(&fb, &empty, BABAL_Q16_FROM_FLOAT(0.0f), 0, 0, true, false);
     check_or_record("ball_only", &fb);
-    /* Ball should paint some pixels near yBall plane. */
     int16_t cy = babal_adjust_y((int16_t)BABAL_VIEWPORT_Y_BALL);
-    expect_true("ball pixel", babal_fb_get(&fb, BABAL_VIEWPORT_X_CENTER, cy));
+    expect_true("ball center clear", !babal_fb_get(&fb, BABAL_VIEWPORT_X_CENTER, cy));
+    expect_true(
+        "ball outline",
+        babal_fb_get(&fb, BABAL_VIEWPORT_X_CENTER, (int16_t)(cy - BABAL_BALL_R - 1)) ||
+            babal_fb_get(&fb, BABAL_VIEWPORT_X_CENTER, (int16_t)(cy + BABAL_BALL_R + 1)));
 
     /* Holes leave some cleared columns vs solid. */
     BabalSoftFb solid_fb, hole_fb;

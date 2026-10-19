@@ -13,7 +13,7 @@ static const float k_y_coef_b = BABAL_LEVEL_Y_BALL *
 static const float k_y_coef_a = k_y_coef_b * (BABAL_VIEWPORT_Y_MAX - BABAL_VIEWPORT_Y_0);
 static const float k_x_coef_d = BABAL_VIEWPORT_Y_MAX;
 static const float k_x_coef_e =
-    (BABAL_SCREEN_W / 1.666f) / (BABAL_VIEWPORT_Y_MAX - BABAL_VIEWPORT_Y_0);
+    BABAL_VIEWPORT_X_NEAR / (BABAL_VIEWPORT_Y_MAX - BABAL_VIEWPORT_Y_0);
 
 float babal_level_to_viewport_y_f(float y_level) {
     if(y_level < 0.0f) {
@@ -149,6 +149,14 @@ void babal_fb_set(BabalSoftFb* fb, int16_t x, int16_t y) {
     fb->pixels[idx] |= (uint8_t)(0x80 >> (x & 7));
 }
 
+void babal_fb_clear_pixel(BabalSoftFb* fb, int16_t x, int16_t y) {
+    if(x < 0 || x >= BABAL_SCREEN_W || y < 0 || y >= BABAL_SCREEN_H) {
+        return;
+    }
+    uint16_t idx = (uint16_t)y * BABAL_FB_STRIDE + (uint16_t)(x >> 3);
+    fb->pixels[idx] &= (uint8_t) ~(0x80 >> (x & 7));
+}
+
 bool babal_fb_get(const BabalSoftFb* fb, int16_t x, int16_t y) {
     if(x < 0 || x >= BABAL_SCREEN_W || y < 0 || y >= BABAL_SCREEN_H) {
         return false;
@@ -211,12 +219,59 @@ void babal_fb_fill_trap(
     }
 }
 
+void babal_fb_fill_trap_band(
+    BabalSoftFb* fb,
+    int16_t x0_near,
+    int16_t x1_near,
+    int16_t y_near,
+    int16_t x0_far,
+    int16_t x1_far,
+    int16_t y_far,
+    int16_t max_band) {
+    /* Screen Y grows downward; near is larger Y than far. */
+    int16_t y_lo = y_far < y_near ? y_far : y_near;
+    int16_t y_hi = y_far > y_near ? y_far : y_near;
+    int16_t span = (int16_t)(y_hi - y_lo);
+    if(span <= 0) {
+        babal_fb_hline(fb, x0_near, x1_near, y_near);
+        return;
+    }
+    if(max_band < 1) {
+        max_band = 1;
+    }
+    /*
+     * Paint a band at the near edge of this depth cell, extending toward the
+     * horizon. That keeps the road under the ball (bottom of the Flipper screen)
+     * instead of stacking everything under the vanishing point.
+     */
+    int16_t band = span < max_band ? span : max_band;
+    int16_t y_end = y_hi; /* near / bottom */
+    int16_t y_start = (int16_t)(y_hi - band);
+    int32_t h = span;
+    for(int16_t y = y_start; y <= y_end; y++) {
+        int32_t t = y - y_lo;
+        /* At y_lo use far xs, at y_hi use near xs. */
+        int16_t xl = (int16_t)(x0_far + ((x0_near - x0_far) * t) / h);
+        int16_t xr = (int16_t)(x1_far + ((x1_near - x1_far) * t) / h);
+        babal_fb_hline(fb, xl, xr, y);
+    }
+    /* Near contour for plank separation. */
+    babal_fb_hline(fb, x0_near, x1_near, y_hi);
+}
+
 void babal_fb_draw_ball(BabalSoftFb* fb, int16_t cx, int16_t cy, int16_t r) {
+    /* Punch a dark disc (clear ink) then add a bright outline — readable on white planks. */
     int32_t r2 = (int32_t)r * r;
-    for(int16_t dy = -r; dy <= r; dy++) {
-        for(int16_t dx = -r; dx <= r; dx++) {
-            if((int32_t)dx * dx + (int32_t)dy * dy <= r2) {
-                babal_fb_set(fb, (int16_t)(cx + dx), (int16_t)(cy + dy));
+    int32_t ro2 = (int32_t)(r + 1) * (r + 1);
+    for(int16_t dy = -(r + 1); dy <= (r + 1); dy++) {
+        for(int16_t dx = -(r + 1); dx <= (r + 1); dx++) {
+            int32_t d2 = (int32_t)dx * dx + (int32_t)dy * dy;
+            int16_t x = (int16_t)(cx + dx);
+            int16_t y = (int16_t)(cy + dy);
+            if(d2 <= r2) {
+                babal_fb_clear_pixel(fb, x, y);
+            } else if(d2 <= ro2) {
+                babal_fb_set(fb, x, y);
             }
         }
     }
@@ -297,14 +352,28 @@ uint16_t babal_render_frame(
                 x0f = x1f;
                 x1f = t;
             }
-            babal_fb_fill_trap(fb, x0n, x1n, y_near, x0f, x1f, y_far);
+            /* Lane seams: inset when the cell is wide enough. */
+            if((x1n - x0n) > 2 * BABAL_LANE_INSET) {
+                x0n = (int16_t)(x0n + BABAL_LANE_INSET);
+                x1n = (int16_t)(x1n - BABAL_LANE_INSET);
+            }
+            if((x1f - x0f) > 2 * BABAL_LANE_INSET) {
+                x0f = (int16_t)(x0f + BABAL_LANE_INSET);
+                x1f = (int16_t)(x1f - BABAL_LANE_INSET);
+            }
+            if(d < BABAL_FULL_FILL_DEPTHS) {
+                babal_fb_fill_trap(fb, x0n, x1n, y_near, x0f, x1f, y_far);
+            } else {
+                babal_fb_fill_trap_band(
+                    fb, x0n, x1n, y_near, x0f, x1f, y_far, BABAL_PAVE_BAND_MAX);
+            }
             drawn++;
         }
     }
 
     if(draw_ball) {
         int16_t cy = babal_adjust_y((int16_t)BABAL_VIEWPORT_Y_BALL) - ball_height;
-        babal_fb_draw_ball(fb, BABAL_VIEWPORT_X_CENTER, cy, 3);
+        babal_fb_draw_ball(fb, BABAL_VIEWPORT_X_CENTER, cy, BABAL_BALL_R);
     }
 
     if(invert) {

@@ -66,7 +66,11 @@ static void babal_save_best(uint32_t best) {
     furi_record_close(RECORD_STORAGE);
 }
 
-static void babal_blit_fb(Canvas* canvas, const BabalSoftFb* fb) {
+static void babal_blit_fb(Canvas* canvas, const BabalSoftFb* fb, bool invert) {
+    /* Soft FB bit=1 is "ink" (platforms / ball outline). Default: black void, white ink. */
+    canvas_set_color(canvas, invert ? ColorWhite : ColorBlack);
+    canvas_draw_box(canvas, 0, 0, BABAL_SCREEN_W, BABAL_SCREEN_H);
+    canvas_set_color(canvas, invert ? ColorBlack : ColorWhite);
     for(int16_t y = 0; y < BABAL_SCREEN_H; y++) {
         for(int16_t x = 0; x < BABAL_SCREEN_W; x++) {
             if(babal_fb_get(fb, x, y)) {
@@ -136,16 +140,12 @@ static void babal_draw_callback(Canvas* canvas, void* ctx) {
         canvas_draw_str_aligned(canvas, 64, 56, AlignCenter, AlignBottom, "Back");
     } else {
         babal_game_render_soft(g);
-        babal_blit_fb(canvas, &g->frame);
+        babal_blit_fb(canvas, &g->frame, g->invert);
 
         canvas_set_font(canvas, FontSecondary);
         char hud[24];
         babal_format_time(hud, sizeof(hud), g->elapsed_ms);
-        if(g->invert) {
-            canvas_set_color(canvas, ColorWhite);
-            canvas_draw_box(canvas, 0, 0, 40, 10);
-            canvas_set_color(canvas, ColorBlack);
-        }
+        canvas_set_color(canvas, g->invert ? ColorBlack : ColorWhite);
         canvas_draw_str(canvas, 2, 8, hud);
 
         if(g->phase == BabalPhaseFinished) {

@@ -194,6 +194,7 @@ void babal_game_render_soft(BabalGame* g) {
         ball_h = 20;
     }
     bool show_ball = (g->crash_flash % 2 == 0);
+    /* Soft buffer keeps a stable ink polarity; Flipper blit applies invert. */
     g->cells_drawn = babal_render_frame(
         &g->frame,
         &view,
@@ -201,5 +202,5 @@ void babal_game_render_soft(BabalGame* g) {
         BABAL_Q16_FROM_FLOAT(shift),
         ball_h,
         show_ball && g->phase == BabalPhasePlaying,
-        g->invert);
+        false);
 }

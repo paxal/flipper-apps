@@ -23,12 +23,22 @@ typedef int32_t babal_q16_t;
 #define BABAL_Q16_TO_INT(q)     ((int32_t)((q) >> 16))
 #define BABAL_Q16_TO_FLOAT(q)   ((float)(q) / 65536.0f)
 
-/* SVG Babal anchors adapted to 128x64. */
-#define BABAL_LEVEL_Y_BALL      0.1666f
+/*
+ * SVG Babal anchors, retuned for Flipper 128x64:
+ * - Raise near plane (Y_0) so the closest tiles are not a full-screen slab.
+ * - Ball plane a bit higher so it sits on visible plank bands.
+ * - Narrower near width so the track does not fill the whole bottom.
+ */
+#define BABAL_LEVEL_Y_BALL      0.2f
 #define BABAL_VIEWPORT_Y_MAX    64.0f
-#define BABAL_VIEWPORT_Y_BALL   16.0f
+#define BABAL_VIEWPORT_Y_BALL   12.0f
 #define BABAL_VIEWPORT_Y_0      0.0f
 #define BABAL_VIEWPORT_X_CENTER 64
+#define BABAL_VIEWPORT_X_NEAR   (BABAL_SCREEN_W / 2.15f)
+#define BABAL_PAVE_BAND_MAX     8
+#define BABAL_LANE_INSET        1
+#define BABAL_BALL_R            3
+#define BABAL_FULL_FILL_DEPTHS  3
 
 typedef struct {
     int16_t y_top; /* screen Y of near edge of depth row (Flipper: down positive) */
@@ -70,6 +80,7 @@ void babal_lut_span_for_cell(
 
 void babal_fb_clear(BabalSoftFb* fb);
 void babal_fb_set(BabalSoftFb* fb, int16_t x, int16_t y);
+void babal_fb_clear_pixel(BabalSoftFb* fb, int16_t x, int16_t y);
 bool babal_fb_get(const BabalSoftFb* fb, int16_t x, int16_t y);
 void babal_fb_hline(BabalSoftFb* fb, int16_t x0, int16_t x1, int16_t y);
 void babal_fb_fill_trap(
@@ -80,6 +91,16 @@ void babal_fb_fill_trap(
     int16_t x0_far,
     int16_t x1_far,
     int16_t y_far);
+/* HP-like: fill at most BABAL_PAVE_BAND_MAX lines from the far edge toward near. */
+void babal_fb_fill_trap_band(
+    BabalSoftFb* fb,
+    int16_t x0_near,
+    int16_t x1_near,
+    int16_t y_near,
+    int16_t x0_far,
+    int16_t x1_far,
+    int16_t y_far,
+    int16_t max_band);
 void babal_fb_draw_ball(BabalSoftFb* fb, int16_t cx, int16_t cy, int16_t r);
 void babal_fb_invert(BabalSoftFb* fb);
 
