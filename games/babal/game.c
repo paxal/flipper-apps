@@ -29,7 +29,7 @@ void babal_game_start(BabalGame* g, uint8_t level_index) {
     g->level_index = level_index;
     g->level = babal_level_get(level_index);
     g->phase = BabalPhasePlaying;
-    g->progress = 0.0f;
+    g->progress = BABAL_START_PROGRESS;
     g->lane = 4.0f;
     g->height = 0.0f;
     g->vz = 0.15f;
@@ -194,7 +194,7 @@ void babal_game_render_soft(BabalGame* g) {
         ball_h = 20;
     }
     bool show_ball = (g->crash_flash % 2 == 0);
-    /* Soft buffer keeps a stable ink polarity; Flipper blit applies invert. */
+    /* Soft buffer: bit=1 dark ink on light void; Flipper blit applies invert. */
     g->cells_drawn = babal_render_frame(
         &g->frame,
         &view,

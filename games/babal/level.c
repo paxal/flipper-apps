@@ -1,6 +1,7 @@
 #include "level.h"
 
 #include <ctype.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -21,7 +22,8 @@ bool babal_level_is_safe(const BabalLevelDef* level, float progress, float lane_
     if(!level) {
         return false;
     }
-    int32_t row = (int32_t)progress;
+    /* SVG: sample under ball at floor(playerY + LEVEL_Y_BALL). */
+    int32_t row = (int32_t)floorf(progress + BABAL_LEVEL_Y_BALL);
     if(row < 0) {
         row = 0;
     }

@@ -109,15 +109,25 @@ int main(void) {
     babal_render_frame(&fb, &holes, BABAL_Q16_FROM_FLOAT(0.0f), 0, 0, true, false);
     check_or_record("holes_p0", &fb);
 
-    /* Ball only: empty track still draws ball (dark disc + bright outline). */
+    /* Ball only: empty track still draws checkerboard dither disc. */
     babal_render_frame(&fb, &empty, BABAL_Q16_FROM_FLOAT(0.0f), 0, 0, true, false);
     check_or_record("ball_only", &fb);
     int16_t cy = babal_adjust_y((int16_t)BABAL_VIEWPORT_Y_BALL);
-    expect_true("ball center clear", !babal_fb_get(&fb, BABAL_VIEWPORT_X_CENTER, cy));
-    expect_true(
-        "ball outline",
-        babal_fb_get(&fb, BABAL_VIEWPORT_X_CENTER, (int16_t)(cy - BABAL_BALL_R - 1)) ||
-            babal_fb_get(&fb, BABAL_VIEWPORT_X_CENTER, (int16_t)(cy + BABAL_BALL_R + 1)));
+    int set_n = 0, clear_n = 0;
+    for(int16_t dy = -BABAL_BALL_R; dy <= BABAL_BALL_R; dy++) {
+        for(int16_t dx = -BABAL_BALL_R; dx <= BABAL_BALL_R; dx++) {
+            if(dx * dx + dy * dy > BABAL_BALL_R * BABAL_BALL_R) {
+                continue;
+            }
+            if(babal_fb_get(&fb, (int16_t)(BABAL_VIEWPORT_X_CENTER + dx), (int16_t)(cy + dy))) {
+                set_n++;
+            } else {
+                clear_n++;
+            }
+        }
+    }
+    expect_true("ball dither has ink", set_n > 8);
+    expect_true("ball dither has voids", clear_n > 8);
 
     /* Holes leave some cleared columns vs solid. */
     BabalSoftFb solid_fb, hole_fb;

@@ -24,21 +24,22 @@ typedef int32_t babal_q16_t;
 #define BABAL_Q16_TO_FLOAT(q)   ((float)(q) / 65536.0f)
 
 /*
- * SVG Babal anchors, retuned for Flipper 128x64:
- * - Raise near plane (Y_0) so the closest tiles are not a full-screen slab.
- * - Ball plane a bit higher so it sits on visible plank bands.
- * - Narrower near width so the track does not fill the whole bottom.
+ * SVG Babal anchors (ufoot svgbabal.svg), adapted to Flipper 128×64.
+ * Soft FB: bit=1 = dark LCD ink (platforms / ball dither); bit=0 = light void.
+ * Matches HP-48 Babal: solid dark pavés on light background, dithered ball.
+ *
+ * X_NEAR: SVG uses W/1.666 (unit width at y0), which fills the whole 128×64
+ * frame for solid near pavés. Retune so a full-width track keeps light side
+ * voids like the HP LCD screenshots (~60% width at the ball plane).
  */
-#define BABAL_LEVEL_Y_BALL      0.2f
+#define BABAL_LEVEL_Y_BALL      0.1666f
 #define BABAL_VIEWPORT_Y_MAX    64.0f
-#define BABAL_VIEWPORT_Y_BALL   12.0f
+#define BABAL_VIEWPORT_Y_BALL   (BABAL_VIEWPORT_Y_MAX / 4.0f) /* ~H/4 */
 #define BABAL_VIEWPORT_Y_0      0.0f
 #define BABAL_VIEWPORT_X_CENTER 64
-#define BABAL_VIEWPORT_X_NEAR   (BABAL_SCREEN_W / 2.15f)
-#define BABAL_PAVE_BAND_MAX     8
-#define BABAL_LANE_INSET        1
-#define BABAL_BALL_R            3
-#define BABAL_FULL_FILL_DEPTHS  3
+#define BABAL_VIEWPORT_X_NEAR   (BABAL_SCREEN_W / 11.0f)
+#define BABAL_BALL_R            6
+#define BABAL_START_PROGRESS    0.5f /* SVG START_Y — near cell straddles ball */
 
 typedef struct {
     int16_t y_top; /* screen Y of near edge of depth row (Flipper: down positive) */
@@ -91,16 +92,7 @@ void babal_fb_fill_trap(
     int16_t x0_far,
     int16_t x1_far,
     int16_t y_far);
-/* HP-like: fill at most BABAL_PAVE_BAND_MAX lines from the far edge toward near. */
-void babal_fb_fill_trap_band(
-    BabalSoftFb* fb,
-    int16_t x0_near,
-    int16_t x1_near,
-    int16_t y_near,
-    int16_t x0_far,
-    int16_t x1_far,
-    int16_t y_far,
-    int16_t max_band);
+/* Checkerboard dither disc (HP Babal ball GROB look). */
 void babal_fb_draw_ball(BabalSoftFb* fb, int16_t cx, int16_t cy, int16_t r);
 void babal_fb_invert(BabalSoftFb* fb);
 

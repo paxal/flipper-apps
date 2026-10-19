@@ -78,9 +78,12 @@ void babal_lut_build(BabalDepthLut* lut, babal_q16_t progress) {
     if(p < 0.0f) {
         p = 0.0f;
     }
+    /* SVG: pave at relative depth (row - playerY); may be negative near the camera. */
+    float base_f = floorf(p);
+    float frac = p - base_f;
 
     for(uint8_t i = 0; i < BABAL_MAX_DEPTH; i++) {
-        float y0 = p + (float)i;
+        float y0 = (float)i - frac;
         float y1 = y0 + 1.0f;
         float vy0 = babal_level_to_viewport_y_f(y0);
         float vy1 = babal_level_to_viewport_y_f(y1);
@@ -219,59 +222,20 @@ void babal_fb_fill_trap(
     }
 }
 
-void babal_fb_fill_trap_band(
-    BabalSoftFb* fb,
-    int16_t x0_near,
-    int16_t x1_near,
-    int16_t y_near,
-    int16_t x0_far,
-    int16_t x1_far,
-    int16_t y_far,
-    int16_t max_band) {
-    /* Screen Y grows downward; near is larger Y than far. */
-    int16_t y_lo = y_far < y_near ? y_far : y_near;
-    int16_t y_hi = y_far > y_near ? y_far : y_near;
-    int16_t span = (int16_t)(y_hi - y_lo);
-    if(span <= 0) {
-        babal_fb_hline(fb, x0_near, x1_near, y_near);
-        return;
-    }
-    if(max_band < 1) {
-        max_band = 1;
-    }
-    /*
-     * Paint a band at the near edge of this depth cell, extending toward the
-     * horizon. That keeps the road under the ball (bottom of the Flipper screen)
-     * instead of stacking everything under the vanishing point.
-     */
-    int16_t band = span < max_band ? span : max_band;
-    int16_t y_end = y_hi; /* near / bottom */
-    int16_t y_start = (int16_t)(y_hi - band);
-    int32_t h = span;
-    for(int16_t y = y_start; y <= y_end; y++) {
-        int32_t t = y - y_lo;
-        /* At y_lo use far xs, at y_hi use near xs. */
-        int16_t xl = (int16_t)(x0_far + ((x0_near - x0_far) * t) / h);
-        int16_t xr = (int16_t)(x1_far + ((x1_near - x1_far) * t) / h);
-        babal_fb_hline(fb, xl, xr, y);
-    }
-    /* Near contour for plank separation. */
-    babal_fb_hline(fb, x0_near, x1_near, y_hi);
-}
-
 void babal_fb_draw_ball(BabalSoftFb* fb, int16_t cx, int16_t cy, int16_t r) {
-    /* Punch a dark disc (clear ink) then add a bright outline — readable on white planks. */
+    /* HP Babal: chunky circular ball with 50% checkerboard dither. */
     int32_t r2 = (int32_t)r * r;
-    int32_t ro2 = (int32_t)(r + 1) * (r + 1);
-    for(int16_t dy = -(r + 1); dy <= (r + 1); dy++) {
-        for(int16_t dx = -(r + 1); dx <= (r + 1); dx++) {
-            int32_t d2 = (int32_t)dx * dx + (int32_t)dy * dy;
+    for(int16_t dy = -r; dy <= r; dy++) {
+        for(int16_t dx = -r; dx <= r; dx++) {
+            if((int32_t)dx * dx + (int32_t)dy * dy > r2) {
+                continue;
+            }
             int16_t x = (int16_t)(cx + dx);
             int16_t y = (int16_t)(cy + dy);
-            if(d2 <= r2) {
-                babal_fb_clear_pixel(fb, x, y);
-            } else if(d2 <= ro2) {
+            if(((x + y) & 1) != 0) {
                 babal_fb_set(fb, x, y);
+            } else {
+                babal_fb_clear_pixel(fb, x, y);
             }
         }
     }
@@ -301,24 +265,32 @@ uint16_t babal_render_frame(
     babal_lut_build(&lut, progress);
 
     float p = BABAL_Q16_TO_FLOAT(progress);
+    if(p < 0.0f) {
+        p = 0.0f;
+    }
     int base = (int)floorf(p);
     if(base < 0) {
         base = 0;
     }
+    float frac = p - (float)base;
 
     uint16_t drawn = 0;
     float shift = BABAL_Q16_TO_FLOAT(lane_shift);
 
-    for(uint8_t d = 0; d < BABAL_MAX_DEPTH; d++) {
+    /* Far → near so nearer pavés cover seams (solid dark track, no wireframe). */
+    for(int8_t di = (int8_t)BABAL_MAX_DEPTH - 1; di >= 0; di--) {
+        uint8_t d = (uint8_t)di;
         int row_i = base + (int)d;
         if(row_i < 0 || (uint16_t)row_i >= level->length) {
             continue;
         }
         const char* row = level->rows[row_i];
         const BabalLutRow* lr = &lut.rows[d];
-        int16_t y_near = babal_adjust_y((int16_t)lroundf(babal_level_to_viewport_y_f(p + d)));
-        int16_t y_far =
-            babal_adjust_y((int16_t)lroundf(babal_level_to_viewport_y_f(p + d + 1.0f)));
+        /* SVG relative depth: row - playerY (= d - frac), may be < 0. */
+        float y_rel0 = (float)d - frac;
+        float y_rel1 = y_rel0 + 1.0f;
+        int16_t y_near = babal_adjust_y((int16_t)lroundf(babal_level_to_viewport_y_f(y_rel0)));
+        int16_t y_far = babal_adjust_y((int16_t)lroundf(babal_level_to_viewport_y_f(y_rel1)));
 
         for(int8_t lane = 0; lane < BABAL_LEVEL_WIDTH; lane++) {
             char ch = row[lane];
@@ -352,21 +324,7 @@ uint16_t babal_render_frame(
                 x0f = x1f;
                 x1f = t;
             }
-            /* Lane seams: inset when the cell is wide enough. */
-            if((x1n - x0n) > 2 * BABAL_LANE_INSET) {
-                x0n = (int16_t)(x0n + BABAL_LANE_INSET);
-                x1n = (int16_t)(x1n - BABAL_LANE_INSET);
-            }
-            if((x1f - x0f) > 2 * BABAL_LANE_INSET) {
-                x0f = (int16_t)(x0f + BABAL_LANE_INSET);
-                x1f = (int16_t)(x1f - BABAL_LANE_INSET);
-            }
-            if(d < BABAL_FULL_FILL_DEPTHS) {
-                babal_fb_fill_trap(fb, x0n, x1n, y_near, x0f, x1f, y_far);
-            } else {
-                babal_fb_fill_trap_band(
-                    fb, x0n, x1n, y_near, x0f, x1f, y_far, BABAL_PAVE_BAND_MAX);
-            }
+            babal_fb_fill_trap(fb, x0n, x1n, y_near, x0f, x1f, y_far);
             drawn++;
         }
     }
