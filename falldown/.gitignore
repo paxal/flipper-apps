@@ -1,0 +1,5 @@
+dist/
+.vscode/
+.clangd
+*.o
+*.d
