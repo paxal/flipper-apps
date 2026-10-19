@@ -1,6 +1,7 @@
 dist/
 .vscode/
 .clangd
+.clang-format
 *.o
 *.d
 tests/test_perspective
