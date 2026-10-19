@@ -50,7 +50,7 @@ Compared Flipper soft-buffer frames to HP-48 LCD photos (`shot1` / cropped Babal
 |--------|-----|
 | Soft FB bit=1 = dark ink; blit white void + black dots | Match HP LCD; Setup → Invert swaps |
 | Full `fill_trap` for every visible platform cell | Solid pavés, no wireframe artifacts |
-| Checkerboard ball, `BABAL_BALL_R = 6` | HP dithered GROB look |
+| Checkerboard ball, `BABAL_BALL_R = 8` | SVG `BALL_SIZE=16` on H=64; chunky HP dithered GROB |
 | `BABAL_VIEWPORT_X_NEAR = W/11` (not SVG `W/1.666`) | Literal SVG unit width fills the whole Flipper frame for solid near rows; retune keeps light side voids (~60% width at the ball plane), like the HP screenshots |
 | Project pavé corners with Thales X (not `half_w >> 2`) | Truncating lane step bowed the track edges; SVG-style corner projection keeps straight vanishing lines |
 | Draw far → near | Nearer pavés cover shared edges |

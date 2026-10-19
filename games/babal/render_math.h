@@ -38,7 +38,7 @@ typedef int32_t babal_q16_t;
 #define BABAL_VIEWPORT_Y_0      0.0f
 #define BABAL_VIEWPORT_X_CENTER 64
 #define BABAL_VIEWPORT_X_NEAR   (BABAL_SCREEN_W / 11.0f)
-#define BABAL_BALL_R            6
+#define BABAL_BALL_R            8 /* SVG BALL_SIZE=16 on H=64 → radius 8 */
 #define BABAL_START_PROGRESS    0.5f /* SVG START_Y — near cell straddles ball */
 
 typedef struct {
