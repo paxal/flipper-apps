@@ -187,6 +187,80 @@ So the “fast algorithm” is: **closed-form perspective → precomputed tables
 
 **Non-goals for render:** full 3D meshes, OpenGL (Borsboom’s Java remake), Godot camera, per-pixel divides every frame.
 
+### Rendering tests (planned)
+
+Keep perspective math and span-fill **pure C** (no Flipper GUI types in the hot helpers) so most tests run **on the host** with `gcc`/`make` — same pattern as other Flipper FAPs that host-test logic outside the SDK. Guí `Canvas` stays a thin adapter.
+
+Suggested layout:
+
+```
+babal/
+  render_math.h / render_math.c   ← project + LUT (host-testable)
+  render.c                       ← Flipper canvas adapter
+  tests/
+    Makefile                     ← `make test` on host
+    test_perspective.c
+    test_lut.c
+    test_span_fill.c
+    goldens/                     ← expected 128×64 frames (PBM/XBM or raw bits)
+    fixtures/                    ← tiny ASCII levels for draw cases
+```
+
+#### T1 — Perspective math (host unit)
+
+| Case | Assert |
+|------|--------|
+| `yLevel → ∞` | `levelToViewportY` → `yMax` (horizon) within 1 px |
+| `yLevel = LEVEL_Y_BALL` | maps to `yBall` ±1 px |
+| `yLevel = 0` | maps to `y0` (near) ±1 px |
+| Monotonicity | increasing `yLevel` → non-decreasing screen Y toward horizon |
+| Symmetry | `levelToViewportX(+x, y) == −levelToViewportX(−x, y)` |
+| Fixed vs float oracle | Q16 result within ±1 px of double reference (same SVG formulas) for a grid of samples |
+
+#### T2 — Depth LUT / `OKTAB` analogue (host unit)
+
+| Case | Assert |
+|------|--------|
+| Build at progress `p` | `row_y[i]` strictly ordered toward horizon; no duplicates that collapse rows |
+| Advance scroll by 1 cell | LUT edges move consistently (near row recycles; far row inserts) |
+| No hot divides | After `lut_build`, `lut_span_for_cell(...)` uses only table reads + add/shift (guard with a test build flag or by inspecting that helpers take LUT*, not recompute `a/(b+y)`) |
+| Bounds | Every left/right edge in `[0, 127]`; left ≤ right |
+
+#### T3 — Span-fill / golden frames (host)
+
+Render into a **soft 128×64 1-bit buffer** (not device Canvas):
+
+| Fixture | Expect |
+|---------|--------|
+| Full solid 8×8 strip, ball centered, progress 0 | Matches `goldens/solid_p0.pbm` (or hash) |
+| Checker / hole pattern | Holes leave background bits clear; platforms set |
+| Ball only (empty track) | Sprite bits only near `yBall` band |
+| Scroll progress +0.5 / +1.0 | Goldens `solid_p05.pbm`, `solid_p1.pbm` — vanishing stable, no tearing |
+| Invert flag on | Bitwise NOT of the non-invert golden (if v1 includes invert later; else skip) |
+
+Workflow: first green run **writes** goldens under a `RECORD_GOLDEN=1` make target; CI/normal `make test` only **compares**. Review goldens visually once when anchors change.
+
+#### T4 — Invariants / regression guards (host)
+
+- Drawn cell count ≤ `LEVEL_WIDTH * MAX_NB_Y_DISPLAY` (8×8).
+- Hole cell never sets platform pixels in soft buffer.
+- Jump height > 0 only offsets ball sprite Y; track LUT unchanged.
+- Fuzz: random 8-lane ASCII strips (fixed seed) never crash; all spans in-bounds.
+
+#### T5 — Manual / device visual (Phase 0 gate, not CI)
+
+- Side-by-side with HP-48 screenshot or SVG Babal: vanishing point, ball plane, chunky pavés “feel right”.
+- Optional: `ufbt launch` + photo/screenshot of Flipper display; attach to PR when Phase 0 lands.
+- Not a substitute for T1–T4 — catches tuning the eye won’t encode as numbers.
+
+#### What we are *not* planning to test in v1
+
+- Full firmware `unit_tests` app flash cycle (overkill for an external FAP).
+- OpenGL / Borsboom remake pixel parity.
+- Cycle-accurate match to HP-48 `AFFICH` asm.
+
+**Done for render tests when:** `cd babal/tests && make test` is green on CI/host, and Phase 0 has one reviewed golden + a device/manual screenshot.
+
 ### Physics (v1 targets)
 
 - Constant gravity; jump impulse while on ground.
@@ -224,8 +298,9 @@ Tune numbers against gameplay feel (HP G/GX was “twice as fast” as S/SX — 
 - Port SVG formulas to fixed-point; draw a hard-coded 8×N strip of pavés.
 - Build the first **depth LUT** (row Y + half-widths); fill trapezoids as spans.
 - Ball sprite that moves left/right on the `yBall` plane.
+- Host tests **T1–T3** landing with `tests/Makefile` + first goldens; T5 manual screenshot for the PR.
 
-**Done when:** Screenshot matches Babal’s vanishing-track look; no per-pixel divides in the hot path.
+**Done when:** `make test` green; screenshot matches Babal’s vanishing-track look; no per-pixel divides in the hot path.
 
 ### Phase 1 — Playable loop
 
@@ -275,6 +350,7 @@ Tune numbers against gameplay feel (HP G/GX was “twice as fast” as S/SX — 
 - [ ] Run time shown at finish; best time retained for session.
 - [ ] About credits original author and public-domain status.
 - [ ] Back always returns to menu / exits cleanly (no hang).
+- [ ] Host render suite (`babal/tests`: T1–T4) passes; Phase 0 goldens reviewed.
 
 ---
 
