@@ -6,6 +6,7 @@ Flipper Zero external apps (FAPs) and shared agent guidance for building them.
 
 - Always-on: [`AGENTS.md`](AGENTS.md)
 - Build/test skill: [`.cursor/skills/flipper-fap-build/SKILL.md`](.cursor/skills/flipper-fap-build/SKILL.md)
+- Babal render-test skill: [`.cursor/skills/babal-render-tests/SKILL.md`](.cursor/skills/babal-render-tests/SKILL.md)
 
 ## Quick start (single app)
 
@@ -49,3 +50,11 @@ The `.fap` is written under `games/falldown/dist/`.
 #### Credit
 
 Gameplay concept from the classic TI-83/84 Falldown / Fall Down calculator games (e.g. Jedraszczak, Rosenberg). This is an original Flipper remake, not a binary dump of calculator software.
+
+## Planned
+
+### Babal (`babal` → will move to `games/babal`)
+
+Port of the classic HP-48 arcade game **Babal** (public domain, U-Foot) to Flipper Zero.
+
+Plan: [`babal/PLAN.md`](babal/PLAN.md)
