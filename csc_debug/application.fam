@@ -1,0 +1,12 @@
+App(
+    appid="csc_debug",
+    name="CSC Debug",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="csc_debug_app",
+    requires=["gui"],
+    stack_size=3 * 1024,
+    fap_category="Bluetooth",
+    fap_version="0.1",
+    fap_author="paxal",
+    fap_description="BLE Cycling Speed and Cadence sensor debugger (requires BLE Full stack / Moon Firmware)",
+)
