@@ -1,0 +1,13 @@
+App(
+    appid="nfc_write_debug",
+    name="NFC Write Debug",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="nfc_write_debug_app",
+    stack_size=4 * 1024,
+    sources=["nfc_write_debug.c", "helpers/*.c"],
+    fap_icon="nfc_write_debug.png",
+    fap_category="NFC",
+    fap_version="0.1",
+    fap_author="paxal",
+    fap_description="Emulate a .nfc card and log reader writes to a timestamped file",
+)
