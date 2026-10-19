@@ -122,17 +122,70 @@ typedef struct {
 } Level;
 ```
 
-### Rendering approach
+### Rendering — U-Foot’s perspective algorithm (planned baseline)
 
-Classic TrailBlazer / Babal look:
+Do **not** invent a random 3D stack. Use the math U-Foot documented when he re-explained Babal in [SVG Babal (2006)](https://ufoot.org/software/babal/svg/en/), and the same optimization ideas visible in the HP-48 `AFFICH` assembly ([bb20dev.zip](https://www.hpcalc.org/details/869)).
 
-1. Track extends “into” the screen (near = bottom, far = horizon).
-2. Draw consecutive platform segments as trapezoids / filled strips.
-3. Holes = gaps (no fill / background).
-4. Ball drawn as a filled circle or 3×3–5×5 square near the bottom third.
-5. Keep contrast high; optional invert later.
+#### Geometric model (from SVG Babal comments)
 
-Start with a **simple 2.5D strip renderer** (lanes × depth rows), not a full 3D engine.
+Depth → screen **Y** is a hyperbolic projection (not linear):
+
+```text
+yViewport = c − a / (b + yLevel)
+```
+
+Coefficients are fixed from three anchors on the HP-sized viewport:
+
+| Anchor | Meaning | SVG default (131×64 scaled) |
+|--------|---------|-----------------------------|
+| `yMax` | Horizon (far / infinite) | top of viewport |
+| `yBall` | Plane where the ball sits | ~1/4 up from bottom |
+| `y0` | Nearest visible ground | bottom |
+
+Lateral → screen **X** uses Thales (linear in X for a fixed screen Y):
+
+```text
+xViewport = (yMax − yViewport) / (yMax − y0) · x0 · xLevel
+          = (d − yViewport) · e · xLevel
+```
+
+Each platform cell (“pavé”) is a **trapezoid**: project the four corners of cell `(lane, depth)`, then fill. Holes = skip draw.
+
+Key SVG constants to port (adapt to 128×64):
+
+| Constant | Value | Role |
+|----------|-------|------|
+| `LEVEL_WIDTH` | 8 | Lanes across the track |
+| `MAX_NB_Y_DISPLAY` | 8 | Only this many depth rows drawn ahead |
+| `REWIND_Y` | 64 | Hole penalty (platforms) |
+| `LEVEL_Y_BALL` | ~1/6 | Ball’s depth plane in level space |
+
+#### Why the HP-48 version was “fast”
+
+From strings/comments in `SBABALGAME` / `AFFICH` (assembly inside `BABALDEV.DIR`):
+
+1. **`OKTAB` / `ACTAB` / “NOUVEAU TAB”** — rebuild a small **lookup table** when the view changes (player progress / scroll), not per pixel.
+2. **Per scanline / per depth row:** store **start offset** + **offset increment** into the screen GROB (`OFFSET`, `INCREMENT D'OFFSET`), then walk the framebuffer with adds — not divides.
+3. **Inner loop is span fill:** for each cell, test a “wall” bit; if solid, read left edge (`POS TRAIT`) and right limit (`PT LIM DROIT`), compute width (`LARGEUR TRAIT`), paint a horizontal run.
+4. **Nested cheap loops:** depth rows × lane width (comments: `LIGNES*4`, `LIGNES*16`, `LARGEUR*8`) — fixed small bounds, same idea as `MAX_NB_Y_DISPLAY × LEVEL_WIDTH`.
+5. **Double buffer:** work buffer vs visible screen (`ECRAN VU HAUT` / `ECRAN TRAVAIL BAS` + swap).
+6. **Ball = sprite blit** (`BOULE` + prebuilt GROBs), with position using a baked `/16` (`DIVISION PAR 16 INTEGREE`) — not a second perspective solver.
+
+So the “fast algorithm” is: **closed-form perspective → precomputed tables → horizontal span fill → sprite ball**, with only ~8 depth rows visible.
+
+#### Flipper implementation plan (`render.c`)
+
+| Step | What | Notes |
+|------|------|--------|
+| R1 | Port `levelToViewportY` / `levelToViewportX` with fixed-point (Q8 or Q16) | Mirror SVG formulas; retune anchors for 128×64 |
+| R2 | At scroll change (or once per frame if cheap): build LUT `row_y[8]`, `row_half_width[8]` or left/right edges for each depth | HP `OKTAB` analogue — **avoid div in inner loops** |
+| R3 | For each of 8 depth × 8 lanes: if platform, fill trapezoid as horizontal spans between projected edges | Prefer `canvas_draw_line` / dot runs; no OpenGL |
+| R4 | Draw ball as fixed sprite near `yBall` plane; jump offsets Y only | Match chunky HP look |
+| R5 | Optional: invert colors for “inv” mode later | Same buffers |
+
+**Coordinate convention (match SVG):** level `y` = forward progress along the track; level `x` = lateral lane (centered); ball jump is a separate visual offset (`z` in SVG). Align naming in C (`progress`, `lane`, `height`) to avoid HP vs SVG axis confusion.
+
+**Non-goals for render:** full 3D meshes, OpenGL (Borsboom’s Java remake), Godot camera, per-pixel divides every frame.
 
 ### Physics (v1 targets)
 
@@ -151,31 +204,34 @@ Tune numbers against gameplay feel (HP G/GX was “twice as fast” as S/SX — 
 | Resource | Use |
 |----------|-----|
 | [User manual](https://ufoot.org/babal/hp48/manual) | Rules, menus, setup options |
-| [hpcalc Babal 2.0](https://www.hpcalc.org/details/880) | Binary + community levels |
-| [Babal 2.0 source](https://www.hpcalc.org/details/3038) *(hpcalc “Source code” listing)* | Assembly / level insights if available |
+| [SVG Babal source](https://ufoot.org/software/babal/svg/en/) (`svgbabal.svg`) | **Authoritative readable perspective math** (`y=c−a/(b+y)`, Thales X, pavé trapezoids) |
+| [Babal 2.0 source `bb20dev.zip`](https://www.hpcalc.org/details/869) | HP-48 asm: `AFFICH`, `OKTAB`, span-fill + LUT speed tricks |
+| [hpcalc Babal 2.0](https://www.hpcalc.org/details/880) | Binary + community `.bab` levels |
+| [borsboom/babal](https://github.com/borsboom/babal) | OpenGL remake + ASCII map data — **feel/levels only**, not the fast path |
 | Emulator play (Emu48 etc.) | Feel, timing, look — requires legal ROM |
 | TrailBlazer footage | Perspective / lane design reference |
-| Author’s modern [Babal](https://ufoot.org/software/babal/en/) | Design inspiration only; different game |
+| Author’s modern [Babal](https://ufoot.org/software/babal/en/) | Different game (endless / Godot); ignore for v1 render |
 
-**License note:** Original is public domain. Credit U-Foot / Christian Mauduit in About screen and README. Do not copy proprietary ROM or emulator ROMs into the repo.
+**License note:** Original is public domain. Credit U-Foot / Christian Mauduit in About screen and README. Do not copy proprietary ROM or emulator ROMs into the repo. SVG Babal is GPL — use it as a **math/algorithm reference**, reimplement in C for the FAP (do not copy the SVG/JS verbatim into a GPL-incompatible tree without deciding license).
 
 ---
 
 ## 6. Implementation phases
 
-### Phase 0 — Spike (prove the look)
+### Phase 0 — Spike (prove the look + perspective)
 
 - Empty FAP skeleton with menu + blank game view.
-- Hard-coded short track strip drawn in perspective.
-- Ball sprite that moves left/right on the near lane.
+- Port SVG formulas to fixed-point; draw a hard-coded 8×N strip of pavés.
+- Build the first **depth LUT** (row Y + half-widths); fill trapezoids as spans.
+- Ball sprite that moves left/right on the `yBall` plane.
 
-**Done when:** Screenshot looks recognizably “Babal-like” on device/emulator.
+**Done when:** Screenshot matches Babal’s vanishing-track look; no per-pixel divides in the hot path.
 
 ### Phase 1 — Playable loop
 
-- Forward scroll driven by `vz`.
+- Forward scroll driven by `vz`; rebuild / advance LUT as progress changes.
 - Jump + gravity.
-- Holes + rewind penalty.
+- Holes + rewind penalty (`−64`).
 - Finish line + elapsed time.
 
 **Done when:** Can complete a short level without soft-locking.
@@ -201,11 +257,13 @@ Tune numbers against gameplay feel (HP G/GX was “twice as fast” as S/SX — 
 
 | Risk | Mitigation |
 |------|------------|
-| Perspective renderer is hard on 64px height | Prototype strip renderer early (Phase 0); simplify lanes |
+| Perspective wrong / “not Babal” | Copy U-Foot SVG anchors first; only then retune for 128×64 |
+| Divisions kill frame time | HP lesson: LUT (`OKTAB`) + span fill; max 8×8 cells/frame |
 | Physics feel wrong vs original | Play original / watch footage; expose `#define` tunables |
 | Original `.bab` format opaque | Author new packed level format; treat community levels as design refs |
-| Frame budget on Flipper | Cap draw depth; precompute trapezoid tables; target 20–25 FPS |
+| Frame budget on Flipper | Cap draw depth; precompute edge tables; target 20–25 FPS |
 | Scope creep toward Godot remake | Keep v1 = finite level + five controls + hole penalty |
+| GPL SVG vs public-domain game | Reimplement math in C; don’t vendor `svgbabal.svg` as source |
 
 ---
 
@@ -227,4 +285,4 @@ Tune numbers against gameplay feel (HP G/GX was “twice as fast” as S/SX — 
 3. **Fidelity:** pixel-faithful HP look vs slightly cleaner Flipper UI chrome?
 4. **Name:** `Babal` vs `BabalFZ` app id to avoid catalog clashes?
 
-**Recommendation defaults:** raw ViewPort for v1; C arrays for one level; HP-faithful look; app id `babal`.
+**Recommendation defaults:** raw ViewPort for v1; C arrays for one level; HP-faithful look; app id `babal`; perspective = U-Foot SVG math + HP-style LUT/span fill.
