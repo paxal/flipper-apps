@@ -1,11 +1,72 @@
 # flipper-apps
 
-External Flipper Zero applications.
+Flipper Zero external apps (FAPs) and shared agent guidance for building them.
+
+## Agent guidance
+
+- Always-on: [`AGENTS.md`](AGENTS.md)
+- Build/test skill: [`.cursor/skills/flipper-fap-build/SKILL.md`](.cursor/skills/flipper-fap-build/SKILL.md)
+
+## Quick start (single app)
+
+```bash
+python3 -m pip install --upgrade ufbt
+export PATH="$HOME/.local/bin:$PATH"
+
+mkdir hello_flipper && cd hello_flipper
+ufbt create APPID=hello_flipper
+ufbt update --channel=release
+ufbt                 # → dist/hello_flipper.fap
+ufbt launch          # USB Flipper required
+```
 
 ## Apps
 
-| App | Path | Notes |
-|-----|------|--------|
-| **CSC Debug** | [`csc_debug/`](csc_debug/) | BLE central debugger for Cycling Speed & Cadence sensors. **Requires Moon Firmware (BLE Full stack)** — stock Flipper cannot scan/connect as a BLE central. |
+### Falldown (`games/falldown`)
 
-See each app’s README for build and install steps.
+Port of the classic TI calculator **Falldown** arcade game.
+
+Steer a ball left and right through gaps in ever-rising floors. Survive as long as you can — if a floor pushes you into the top of the screen, the run ends. Score increases for each floor you pass; the best score is saved on the SD card.
+
+#### Controls
+
+| Key | Action |
+|-----|--------|
+| Left / Right | Move the ball |
+| OK | Start / retry |
+| Back | Quit to title (from play or game over); exit from title |
+
+#### Build
+
+```bash
+cd games/falldown
+ufbt
+ufbt launch   # USB Flipper required
+```
+
+The `.fap` is written under `games/falldown/dist/`.
+
+#### Credit
+
+Gameplay concept from the classic TI-83/84 Falldown / Fall Down calculator games (e.g. Jedraszczak, Rosenberg). This is an original Flipper remake, not a binary dump of calculator software.
+
+### CSC Debug (`csc_debug`)
+
+BLE central debugger for Cycling Speed and Cadence sensors (GATT service `0x1816`).
+
+Scan nearby advertisers, connect to a sensor, subscribe to CSC Measurement, and show live speed, cadence, rev counters, and raw hex.
+
+**Requires Moon Firmware (BLE Full stack)** — stock Flipper is peripheral-only and cannot scan or connect to CSC sensors. See [`csc_debug/README.md`](csc_debug/README.md) for details and build steps.
+
+#### Build (Moon Firmware)
+
+```bash
+# From a Moon Firmware tree with this app linked into applications_user/
+./fbt COMPACT=1 DEBUG=0 fap_csc_debug
+```
+
+Host-side parser tests (no Flipper SDK):
+
+```bash
+make test
+```
