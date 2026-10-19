@@ -58,3 +58,24 @@ Gameplay concept from the classic TI-83/84 Falldown / Fall Down calculator games
 Port of the classic HP-48 arcade game **Babal** (public domain, U-Foot / Christian Mauduit).
 
 App readme (controls, build, **HP render findings**): [`games/babal/README.md`](games/babal/README.md) · plan: [`games/babal/PLAN.md`](games/babal/PLAN.md)
+
+### CSC Debug (`csc_debug`)
+
+BLE central debugger for Cycling Speed and Cadence sensors (GATT service `0x1816`).
+
+Scan nearby advertisers, connect to a sensor, subscribe to CSC Measurement, and show live speed, cadence, rev counters, and raw hex.
+
+**Requires Moon Firmware (BLE Full stack)** — stock Flipper is peripheral-only and cannot scan or connect to CSC sensors. See [`csc_debug/README.md`](csc_debug/README.md) for details and build steps.
+
+#### Build (Moon Firmware)
+
+```bash
+# From a Moon Firmware tree with this app linked into applications_user/
+./fbt COMPACT=1 DEBUG=0 fap_csc_debug
+```
+
+Host-side parser tests (no Flipper SDK):
+
+```bash
+make test
+```
