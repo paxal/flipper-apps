@@ -3,17 +3,17 @@ name: babal-render-tests
 description: >-
   Author, run, and update Babal Flipper host rendering tests (perspective math,
   depth LUT, soft 128x64 golden frames, invariants). Use when implementing
-  babal/render_math, babal/tests, recording goldens, or debugging render
-  regressions for the Babal HP-48 port.
+  games/babal/render_math, games/babal/tests, recording goldens, or debugging
+  render regressions for the Babal HP-48 port.
 ---
 
 # Babal render tests
 
-Follow this skill whenever you touch Babal perspective/LUT/span-fill code or the host test suite. Plan context: [`babal/PLAN.md`](../../../babal/PLAN.md) (sections *Rendering — U-Foot’s perspective algorithm* and *Rendering tests*).
+Follow this skill whenever you touch Babal perspective/LUT/span-fill code or the host test suite. Plan context: [`games/babal/PLAN.md`](../../../games/babal/PLAN.md) (sections *Rendering — U-Foot’s perspective algorithm* and *Rendering tests*).
 
 ## When to use
 
-- Implementing Phase 0+ `render_math.c` / `render.c`
+- Implementing Phase 0+ `render_math.c` / `render.c` under `games/babal/`
 - Adding or changing T1–T4 cases
 - Recording or reviewing golden frames
 - A render regression (“looks wrong”, LUT bounds, hole pixels painting)
@@ -21,7 +21,7 @@ Follow this skill whenever you touch Babal perspective/LUT/span-fill code or the
 ## Layout (required)
 
 ```
-babal/
+games/babal/
   render_math.h
   render_math.c          # pure C — no Flipper GUI / furi includes
   render.c               # thin Canvas adapter only
@@ -40,7 +40,7 @@ babal/
 ## Commands
 
 ```sh
-cd babal/tests
+cd games/babal/tests
 make test                 # compare goldens; must be green on CI
 RECORD_GOLDEN=1 make test # rewrite goldens after intentional visual change
 ```
@@ -103,9 +103,9 @@ After host green: screenshot Flipper (`ufbt launch`) or emulator frame; compare 
 
 ## Agent checklist
 
-1. Read this skill before editing render or `babal/tests`.
+1. Read this skill before editing render or `games/babal/tests`.
 2. Keep math in `render_math.*` (host-linkable).
 3. Add/adjust T1–T4 for the behavior you change.
-4. Run `make test`; only use `RECORD_GOLDEN=1` when the visual change is intentional.
+4. Run `make test` from `games/babal/tests`; only use `RECORD_GOLDEN=1` when the visual change is intentional.
 5. For Phase 0 completion: host green **and** T5 screenshot in the PR.
-6. Update [`babal/PLAN.md`](../../../babal/PLAN.md) only if the test *contract* changes (new ID, format, or command).
+6. Update [`games/babal/PLAN.md`](../../../games/babal/PLAN.md) only if the test *contract* changes (new ID, format, or command).

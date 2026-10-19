@@ -1,6 +1,6 @@
 # Babal — Flipper Zero Port Plan
 
-Port of **Babal 2.0** (HP-48 / HP-49 arcade game by Christian Mauduit / U-Foot) to Flipper Zero as a FAP under `paxal/flipper-apps`.
+Port of **Babal 2.0** (HP-48 / HP-49 arcade game by Christian Mauduit / U-Foot) to Flipper Zero as a FAP under `paxal/flipper-apps`, living at **`games/babal/`**.
 
 | | |
 |---|---|
@@ -88,17 +88,22 @@ Hold-to-repeat for left/right/accel matches the HP “sensitivity” idea withou
 
 ### Suggested layout
 
+All game sources live under **`games/babal/`** (other Flipper games can sit alongside as `games/<name>/`).
+
 ```
-babal/
-  PLAN.md              ← this document
-  application.fam
-  babal.c              ← app entry, menus, loop
-  game.h / game.c      ← state machine, physics
-  level.h / level.c    ← track data + collision
-  render.h / render.c  ← perspective draw
-  levels/
-    tutorial.h         ← packed platform strip
-  assets/              ← optional icons / splash
+games/
+  babal/
+    PLAN.md              ← this document
+    application.fam
+    babal.c              ← app entry, menus, loop
+    game.h / game.c      ← state machine, physics
+    level.h / level.c    ← track data + collision
+    render_math.h / .c   ← perspective + LUT (host-testable)
+    render.h / render.c  ← Flipper canvas adapter
+    levels/
+      tutorial.h         ← packed platform strip
+    assets/              ← optional icons / splash
+    tests/               ← host render suite (see skill)
 ```
 
 ### Data model (sketch)
@@ -189,14 +194,14 @@ So the “fast algorithm” is: **closed-form perspective → precomputed tables
 
 ### Rendering tests (planned)
 
-**Agent skill (required):** [`.cursor/skills/babal-render-tests/SKILL.md`](../.cursor/skills/babal-render-tests/SKILL.md) — author, run, and update T1–T5. Read and follow that skill whenever implementing `render_math`, touching `babal/tests`, recording goldens, or debugging render regressions. This plan section is the contract summary; the skill is the step-by-step procedure.
+**Agent skill (required):** [`.cursor/skills/babal-render-tests/SKILL.md`](../../.cursor/skills/babal-render-tests/SKILL.md) — author, run, and update T1–T5. Read and follow that skill whenever implementing `render_math`, touching `games/babal/tests`, recording goldens, or debugging render regressions. This plan section is the contract summary; the skill is the step-by-step procedure.
 
 Keep perspective math and span-fill **pure C** (no Flipper GUI types in the hot helpers) so most tests run **on the host** with `gcc`/`make` — same pattern as other Flipper FAPs that host-test logic outside the SDK. GUI `Canvas` stays a thin adapter.
 
-Suggested layout:
+Test layout (under `games/babal/`):
 
 ```
-babal/
+games/babal/
   render_math.h / render_math.c   ← project + LUT (host-testable)
   render.c                       ← Flipper canvas adapter
   tests/
@@ -261,7 +266,7 @@ Workflow: first green run **writes** goldens under a `RECORD_GOLDEN=1` make targ
 - OpenGL / Borsboom remake pixel parity.
 - Cycle-accurate match to HP-48 `AFFICH` asm.
 
-**Done for render tests when:** skill checklist complete; `cd babal/tests && make test` is green on CI/host; Phase 0 has one reviewed golden + a device/manual screenshot (T5).
+**Done for render tests when:** skill checklist complete; `cd games/babal/tests && make test` is green on CI/host; Phase 0 has one reviewed golden + a device/manual screenshot (T5).
 
 ### Physics (v1 targets)
 
@@ -279,7 +284,7 @@ Tune numbers against gameplay feel (HP G/GX was “twice as fast” as S/SX — 
 
 | Resource | Use |
 |----------|-----|
-| [babal-render-tests skill](../.cursor/skills/babal-render-tests/SKILL.md) | **How to write/run render tests** (T1–T5) |
+| [babal-render-tests skill](../../.cursor/skills/babal-render-tests/SKILL.md) | **How to write/run render tests** (T1–T5) |
 | [User manual](https://ufoot.org/babal/hp48/manual) | Rules, menus, setup options |
 | [SVG Babal source](https://ufoot.org/software/babal/svg/en/) (`svgbabal.svg`) | **Authoritative readable perspective math** (`y=c−a/(b+y)`, Thales X, pavé trapezoids) |
 | [Babal 2.0 source `bb20dev.zip`](https://www.hpcalc.org/details/869) | HP-48 asm: `AFFICH`, `OKTAB`, span-fill + LUT speed tricks |
@@ -302,9 +307,9 @@ Tune numbers against gameplay feel (HP G/GX was “twice as fast” as S/SX — 
 - Build the first **depth LUT** (row Y + half-widths); fill trapezoids as spans.
 - Ball sprite that moves left/right on the `yBall` plane.
 - Host tests **T1–T3** landing with `tests/Makefile` + first goldens; T5 manual screenshot for the PR.
-- Follow [babal-render-tests skill](../.cursor/skills/babal-render-tests/SKILL.md) end-to-end (layout, commands, checklist).
+- Follow [babal-render-tests skill](../../.cursor/skills/babal-render-tests/SKILL.md) end-to-end (layout, commands, checklist).
 
-**Done when:** skill checklist done; `make test` green; screenshot matches Babal’s vanishing-track look; no per-pixel divides in the hot path.
+**Done when:** skill checklist done; `cd games/babal/tests && make test` green; screenshot matches Babal’s vanishing-track look; no per-pixel divides in the hot path.
 
 ### Phase 1 — Playable loop
 
@@ -354,7 +359,7 @@ Tune numbers against gameplay feel (HP G/GX was “twice as fast” as S/SX — 
 - [ ] Run time shown at finish; best time retained for session.
 - [ ] About credits original author and public-domain status.
 - [ ] Back always returns to menu / exits cleanly (no hang).
-- [ ] Host render suite (`babal/tests`: T1–T4) passes per [babal-render-tests skill](../.cursor/skills/babal-render-tests/SKILL.md); Phase 0 goldens reviewed.
+- [ ] Host render suite (`games/babal/tests`: T1–T4) passes per [babal-render-tests skill](../../.cursor/skills/babal-render-tests/SKILL.md); Phase 0 goldens reviewed.
 
 ---
 

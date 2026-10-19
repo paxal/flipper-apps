@@ -2,6 +2,8 @@
 
 Flipper Zero external apps (FAPs) and shared agent guidance for building them.
 
+Games live under [`games/`](games/).
+
 ## Agent guidance
 
 - Always-on: [`AGENTS.md`](AGENTS.md)
@@ -53,8 +55,8 @@ Gameplay concept from the classic TI-83/84 Falldown / Fall Down calculator games
 
 ## Planned
 
-### Babal (`babal` → will move to `games/babal`)
+### Babal (`games/babal`)
 
 Port of the classic HP-48 arcade game **Babal** (public domain, U-Foot) to Flipper Zero.
 
-Plan: [`babal/PLAN.md`](babal/PLAN.md)
+Plan: [`games/babal/PLAN.md`](games/babal/PLAN.md)
