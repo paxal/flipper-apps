@@ -57,32 +57,4 @@ Gameplay concept from the classic TI-83/84 Falldown / Fall Down calculator games
 
 Port of the classic HP-48 arcade game **Babal** (public domain, U-Foot / Christian Mauduit).
 
-Drive a ball along an 8-lane perspective track of platforms and holes. Accelerate, steer, and jump — falling rewinds you 64 platforms. Finish the level as fast as you can.
-
-Plan / design notes: [`games/babal/PLAN.md`](games/babal/PLAN.md)
-
-#### Controls
-
-| Key | Action |
-|-----|--------|
-| Left / Right | Steer (title: change level) |
-| Up / Down | Accelerate / brake (title: setup / about) |
-| OK | Jump / start / retry; toggle invert in setup |
-| Back | Title / exit |
-
-Setup (from title → Up): invert display, bounce mode.
-
-#### Build & test
-
-```bash
-cd games/babal
-ufbt
-ufbt launch              # USB Flipper required
-make -C tests test       # host render suite T1–T4
-```
-
-The `.fap` is written under `games/babal/dist/`.
-
-#### Credit
-
-Original Babal 2.0 by Christian Mauduit (U-Foot) for HP-48 — public domain. Flipper remake with perspective math from U-Foot’s SVG Babal notes.
+App readme (controls, build, **HP render findings**): [`games/babal/README.md`](games/babal/README.md) · plan: [`games/babal/PLAN.md`](games/babal/PLAN.md)
