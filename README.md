@@ -22,7 +22,7 @@ Requires [uFBT](https://github.com/flipperdevices/flipperzero-ufbt):
 
 ```bash
 pip install --upgrade ufbt
-cd falldown
+cd Games/falldown
 ufbt
 ```
 
@@ -32,7 +32,7 @@ Flash and launch on a connected Flipper:
 ufbt launch
 ```
 
-The `.fap` is written under `falldown/dist/`.
+The `.fap` is written under `Games/falldown/dist/`.
 
 ### Credit
 
