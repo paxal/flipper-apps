@@ -102,6 +102,17 @@ void babal_lut_build(BabalDepthLut* lut, babal_q16_t progress) {
     }
 }
 
+/* lane_edge * half_w / 4 with round-to-nearest (not >>2 — that bows edges). */
+static int16_t babal_lane_x_from_half(int16_t lane_edge, int16_t half_w) {
+    int32_t num = (int32_t)lane_edge * (int32_t)half_w;
+    if(num >= 0) {
+        num += 2;
+    } else {
+        num -= 2;
+    }
+    return (int16_t)(num / 4);
+}
+
 void babal_lut_span_for_cell(
     const BabalDepthLut* lut,
     uint8_t depth_row,
@@ -111,22 +122,14 @@ void babal_lut_span_for_cell(
     int16_t* x0_far,
     int16_t* x1_far) {
     const BabalLutRow* row = &lut->rows[depth_row];
-    /* Reconstruct edges from half-widths. Uses only table reads + mul/add/shift. */
-    int16_t step_n = row->half_w_near >> 2; /* hn/4 */
-    int16_t step_f = row->half_w_far >> 2;
-    if(step_n == 0) {
-        step_n = 1;
-    }
-    if(step_f == 0) {
-        step_f = 1;
-    }
+    /* Reconstruct edges from half-widths. Table read + mul/add only (no div in Y). */
     int16_t left = (int16_t)(lane - 4);
     int16_t right = (int16_t)(lane - 3);
 
-    *x0_near = clamp_x(babal_adjust_x((int16_t)(left * step_n)));
-    *x1_near = clamp_x(babal_adjust_x((int16_t)(right * step_n)));
-    *x0_far = clamp_x(babal_adjust_x((int16_t)(left * step_f)));
-    *x1_far = clamp_x(babal_adjust_x((int16_t)(right * step_f)));
+    *x0_near = clamp_x(babal_adjust_x(babal_lane_x_from_half(left, row->half_w_near)));
+    *x1_near = clamp_x(babal_adjust_x(babal_lane_x_from_half(right, row->half_w_near)));
+    *x0_far = clamp_x(babal_adjust_x(babal_lane_x_from_half(left, row->half_w_far)));
+    *x1_far = clamp_x(babal_adjust_x(babal_lane_x_from_half(right, row->half_w_far)));
 
     if(*x0_near > *x1_near) {
         int16_t t = *x0_near;
@@ -261,8 +264,10 @@ uint16_t babal_render_frame(
     bool invert) {
     babal_fb_clear(fb);
 
+    /* Keep LUT build so geometry stays in sync with T2 / span helpers. */
     BabalDepthLut lut;
     babal_lut_build(&lut, progress);
+    (void)lut;
 
     float p = BABAL_Q16_TO_FLOAT(progress);
     if(p < 0.0f) {
@@ -285,35 +290,31 @@ uint16_t babal_render_frame(
             continue;
         }
         const char* row = level->rows[row_i];
-        const BabalLutRow* lr = &lut.rows[d];
         /* SVG relative depth: row - playerY (= d - frac), may be < 0. */
         float y_rel0 = (float)d - frac;
         float y_rel1 = y_rel0 + 1.0f;
-        int16_t y_near = babal_adjust_y((int16_t)lroundf(babal_level_to_viewport_y_f(y_rel0)));
-        int16_t y_far = babal_adjust_y((int16_t)lroundf(babal_level_to_viewport_y_f(y_rel1)));
+        float vy0 = babal_level_to_viewport_y_f(y_rel0);
+        float vy1 = babal_level_to_viewport_y_f(y_rel1);
+        int16_t y_near = babal_adjust_y((int16_t)lroundf(vy0));
+        int16_t y_far = babal_adjust_y((int16_t)lroundf(vy1));
 
         for(int8_t lane = 0; lane < BABAL_LEVEL_WIDTH; lane++) {
             char ch = row[lane];
             if(!cell_is_platform(ch)) {
                 continue;
             }
-            int16_t x0n, x1n, x0f, x1f;
-            /* Apply player lateral shift by offsetting lane in fixed steps. */
+            /* SVG pavePoints: project four corners with Thales X at each Y.
+             * That keeps lane edges as straight lines in screen space. */
             float lane_l = (float)lane - 4.0f - shift;
             float lane_r = lane_l + 1.0f;
-            int16_t step_n = lr->half_w_near >> 2;
-            int16_t step_f = lr->half_w_far >> 2;
-            /* When step is 0, fall back to float projection once (edge case at horizon). */
-            if(step_n == 0) {
-                step_n = 1;
-            }
-            if(step_f == 0) {
-                step_f = 1;
-            }
-            x0n = clamp_x(babal_adjust_x((int16_t)lroundf(lane_l * step_n)));
-            x1n = clamp_x(babal_adjust_x((int16_t)lroundf(lane_r * step_n)));
-            x0f = clamp_x(babal_adjust_x((int16_t)lroundf(lane_l * step_f)));
-            x1f = clamp_x(babal_adjust_x((int16_t)lroundf(lane_r * step_f)));
+            int16_t x0n = clamp_x(
+                babal_adjust_x((int16_t)lroundf(babal_level_to_viewport_x_f(lane_l, vy0))));
+            int16_t x1n = clamp_x(
+                babal_adjust_x((int16_t)lroundf(babal_level_to_viewport_x_f(lane_r, vy0))));
+            int16_t x0f = clamp_x(
+                babal_adjust_x((int16_t)lroundf(babal_level_to_viewport_x_f(lane_l, vy1))));
+            int16_t x1f = clamp_x(
+                babal_adjust_x((int16_t)lroundf(babal_level_to_viewport_x_f(lane_r, vy1))));
             if(x0n > x1n) {
                 int16_t t = x0n;
                 x0n = x1n;
