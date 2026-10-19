@@ -1,0 +1,9 @@
+dist/
+.vscode/
+.clangd
+*.o
+*.d
+tests/test_perspective
+tests/test_lut
+tests/test_span_fill
+tests/test_invariants
