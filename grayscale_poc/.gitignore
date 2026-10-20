@@ -1,0 +1,7 @@
+dist/
+.vscode/
+.clangd
+.clang-format
+*.o
+*.d
+test/test_gray2bit

@@ -25,6 +25,18 @@ ufbt launch          # USB Flipper required
 
 ## Apps
 
+### Grayscale POC (`grayscale_poc`)
+
+2-bit grayscale proof-of-concept on the 1-bit LCD via temporal FRC (frame-rate control). Ships with a packed Flipper-themed demo image.
+
+See [`grayscale_poc/README.md`](grayscale_poc/README.md).
+
+```bash
+cd grayscale_poc
+ufbt
+make -C test
+```
+
 ### Falldown (`games/falldown`)
 
 Port of the classic TI calculator **Falldown** arcade game.
