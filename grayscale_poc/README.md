@@ -1,18 +1,27 @@
 # Grayscale POC
 
-Proof-of-concept **2-bit grayscale** (4 levels) on the Flipper Zero’s native 1-bit LCD.
+Proof-of-concept **2-bit grayscale** (4 levels) on the Flipper Zero’s native 1-bit LCD, using the same tricks calculator scene programmers used on **TI-83/89** and **HP-48**.
 
-The panel can only drive each pixel on or off. This app stores a packed 2-bit framebuffer and uses **frame-rate control (FRC)** / temporal dithering: mid-grays blink on for 1/3 or 2/3 of frames so persistence of vision reads them as gray.
+The panel can only drive each pixel on or off. Perceived gray comes from either **temporal** plane switching (TI/HP FRC) or **spatial** dither (HP GROB / Babal checkerboard family).
+
+## Heritage
+
+| Source | Idea we borrow |
+|--------|----------------|
+| [TIGCC grayscale tutorial](http://tigcc.ticalc.org/tut/grayscale.html) (TI-89/92+) | Two bitplanes; show the dark plane ~⅔ of the time and the light plane ~⅓ so light/dark gray separate |
+| TI-83 Plus interrupt gray | Same 1/3 · 2/3 duty on a fast timer |
+| HP-48 [GREYSCAL](https://www.hpcalc.org/hp48/docs/misc/) (Randy Ding) | Multi-frame GROBs with **2:1** (2 frames) or **4:2:1** (3 frames) weighting; design frames light→dark |
+| HP Babal (this repo) | Spatial 50% checkerboard on the ball — flicker-free mid-tone |
+
+Flipper cannot retarget LCD DMA like TI HW1, so the “plane switch” is a software blit of a pre-baked XBM each tick — same visual math, different plumbing (closer to TI HW2’s copy path).
 
 ## Demo image
 
-Embedded 128×64 Flipper-shaped scene with all four levels (black / dark / light / white), including a 4-band gradient on the “screen” and a small dolphin silhouette.
+Embedded 128×64 Flipper-shaped scene with all four levels, including a 4-band gradient on the “screen” and a small dolphin silhouette.
 
 Static preview (true 2-bit expanded to 8-bit PNG — not FRC):
 
 ![2-bit Flipper demo](preview_flipper_2bit.png)
-
-Regenerate the C array + preview:
 
 ```bash
 python3 tools/gen_flipper_image.py
@@ -22,11 +31,20 @@ python3 tools/gen_flipper_image.py
 
 | Key | Action |
 |-----|--------|
-| OK | Toggle FRC grayscale ↔ hard threshold (1-bit) |
-| Up / Down | Toggle HUD hint |
+| Left / Right / OK | Cycle display mode |
+| Up / Down | Toggle HUD |
 | Back | Exit |
 
-Backlight is held on while the app runs so the FRC flicker is visible.
+### Modes
+
+| Mode | Kind | Notes |
+|------|------|-------|
+| **TI planes** | Temporal | Dual plane + 2:1 schedule (default) |
+| **Stagger** | Temporal | Same duties with `(x+y)%3` phase offset |
+| **HP Bayer** | Spatial | 2×2 ordered dither — no flicker |
+| **Thresh** | Static | Hard 1-bit clamp for comparison |
+
+Backlight stays on while the app runs so temporal modes are visible.
 
 ## Build
 
@@ -34,19 +52,17 @@ Backlight is held on while the app runs so the FRC flicker is visible.
 cd grayscale_poc
 ufbt update --channel=release
 ufbt                 # → dist/grayscale_poc.fap
-make -C test         # host unit tests
+make -C test
 ufbt launch          # USB Flipper required
 ```
 
-## How it works
+## How TI planes map to gray
 
-| Level | Duty (ink / 3 frames) | Appearance |
-|-------|----------------------|------------|
-| 0 | 3/3 | Black |
-| 1 | 2/3 | Dark gray |
-| 2 | 1/3 | Light gray |
-| 3 | 0/3 | White |
-
-Per-pixel spatial phase `(x + y) % 3` staggers which sub-frame is inked so large flat regions flicker less in sync.
+| Level | Dark plane | Light plane | Duty (dark×2 + light×1) |
+|-------|------------|-------------|-------------------------|
+| Black | ✓ | ✓ | 3/3 |
+| Dark | ✓ | | 2/3 |
+| Light | | ✓ | 1/3 |
+| White | | | 0/3 |
 
 Pure logic lives in `helpers/gray2bit.c` (no Flipper APIs) and is covered by host tests under `test/`.
