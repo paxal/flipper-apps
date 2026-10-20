@@ -40,7 +40,31 @@ Fan C# / XNA demo source released 2009 on [The Shining Source](https://www.shini
 
 **Why copy is still wrong even if their *code* is PD:** public-domain fan code does not grant Sega’s rights in Shining Force 2 IP. Remake maps/sprites/script that reproduce the commercial game remain off-limits.
 
-**Why it is a poor direct port target anyway:** C# + XNA + BASS on PC ≠ Flipper C FAP on 128×64 with no sound. Treat it as optional **reading**, not a codebase to transplant. Prefer B.A.B.S. / other Shining Aid engines the same way — mechanics notes only, original content only.
+**Why it is a poor direct port target anyway:** C# + XNA + BASS on PC ≠ Flipper C FAP on 128×64 with no sound. Treat it as optional **reading**, not a codebase to transplant. Prefer B.A.B.S. / other Shining Aid engines the same way — mechanics notes only, until a content audit passes (below).
+
+### Fan games: when a “port of a fan game” is OK
+
+Porting a **fan-made** tactics game (not SF2) is fine **only if both** code **and** redistributable content (story, maps, graphics, names) are clearly licensed for reuse — and the package does **not** include Sega (or other commercial) rips.
+
+**Audit checklist before treating any fangame as a port source:**
+
+1. Written license for **code** (MIT, PD, GPL, etc.) and for **assets** (CC0, CC-BY, PD, or explicit “rip freely”).
+2. Credits list: no “sprites from SF2 / sprites-resource rips / music from Genesis.”
+3. Content is an **original** setting (new names, maps, dialogue) — not a retelling of SF2’s plot.
+4. Still shrink for Flipper: 1–2 battles, ≤8 units, 1-bit redrawn glyphs (do not expect to ship PC/Java art as-is on 128×64).
+
+| Candidate | Status for Mono Tactics |
+|-----------|-------------------------|
+| **Aura4 SF2 remake** | Code may be PD; **content is SF2** → not a fan-*original* port |
+| **Rising Flame** (itch) | Author states some assets from SF / FF → **reject** |
+| **ShiningForceRemade Assets-Original** | Explicit **sprite rips** → **reject** |
+| **Classic Verge BABS** (2001) | Authors say open source **including graphics** (“may be ripped”) — closest Shining Source **engine demo**; tiny “stone-age” art. Could inspire a licensed micro-port **after** downloading and confirming no ripped commercial tiles in that specific package |
+| **BABS 2.5 / Lycadell (Shiny Sword)** | Original *campaign* intent (Lycadell village, Elvenfyre graphics/text). Site marks aid **code** PD; asset license is looser / multi-author — **audit zip before reuse**; still Java/PC-scale for Flipper |
+| **Genso Battle** | MIT code + **CC-BY-4.0 original assets** — clean licenses, but Touhou/Terra-Battle style, not SF; too big for Flipper as-is |
+| **OpenGameArt CC0 kits** (e.g. Tiny Tactics) | Good for **original** Mono Tactics art (downscale/dither) — not a fangame story |
+| **The Sparkling Farce** | MIT Godot *platform*; demo content is placeholders — not a finished fan story to port |
+
+**Practical default for this repo:** keep Mono Tactics **original** (FS0–FS5). Optionally, after an audit, add a later FS that ports **one** tiny freely licensed battle scenario (e.g. verified BABS demo map) with Flipper-redrawn 1-bit sprites and credit line — never SF2 story/art.
 
 ### Hardware reality (Flipper Zero)
 
