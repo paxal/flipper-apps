@@ -28,6 +28,20 @@ Inspired by the *genre* of classic 16-bit strategy RPGs (grid battles, turn orde
 - Original names, maps, unit art, and dialogue only.
 - Document inspiration at genre level only (grid tactics), same spirit as Falldown’s “classic calculator game” credit — not a binary dump.
 
+### External reference: Aura4 SF2 remake (Shining Source)
+
+Fan C# / XNA demo source released 2009 on [The Shining Source](https://www.shiningsource.org/2009/11/shining-force-2-remake-source-released/) ([download page](https://www.shiningsource.org/downloads/sf2-remake-source/)). Site marks Shining Aid code **Public Domain unless otherwise stated**.
+
+| May use | Must not use |
+|---------|----------------|
+| **Ideas** about turn flow, move ranges, phase order, UI state machines — reimplemented from scratch in C for Flipper | Their **tree as a dependency** (no vendoring into this repo) |
+| Generic tactics patterns (BFS move flood, acted flags, win when no enemies) | **SF2 story, maps, unit names, sprites, dialogue, music/MP3s**, or other Sega-derived content shipped with the remake |
+| Notes in FEATURE docs: “studied X concept; our API is …” | Claiming Mono Tactics is an SF2 remake or port |
+
+**Why copy is still wrong even if their *code* is PD:** public-domain fan code does not grant Sega’s rights in Shining Force 2 IP. Remake maps/sprites/script that reproduce the commercial game remain off-limits.
+
+**Why it is a poor direct port target anyway:** C# + XNA + BASS on PC ≠ Flipper C FAP on 128×64 with no sound. Treat it as optional **reading**, not a codebase to transplant. Prefer B.A.B.S. / other Shining Aid engines the same way — mechanics notes only, original content only.
+
 ### Hardware reality (Flipper Zero)
 
 | Constraint | Impact on design |
