@@ -59,6 +59,12 @@ Port of the classic HP-48 arcade game **Babal** (public domain, U-Foot / Christi
 
 App readme (controls, build, **HP render findings**): [`games/babal/README.md`](games/babal/README.md) · plan: [`games/babal/PLAN.md`](games/babal/PLAN.md)
 
+### Mono Tactics (`games/mono_tactics`)
+
+**Planning only.** Original Flipper tactical RPG prototype (grid battles, reduced 1-bit graphics, no sound). Genre-inspired mechanics — not a Shining Force 2 port.
+
+Feasibility + independent feature-set roadmap: [`games/mono_tactics/PLAN.md`](games/mono_tactics/PLAN.md)
+
 ### NFC Write Debug (`nfc_write_debug`)
 
 Emulate a `.nfc` from the SD card and log reader memory writes to a timestamped file under `apps_data/nfc_write_debug/logs/`. Supports MIFARE Classic (blocks) and Ultralight/NTAG (pages).
