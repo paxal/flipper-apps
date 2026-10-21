@@ -91,7 +91,7 @@ int32_t grayscale_poc_app(void* p) {
 
     GrayApp* app = malloc(sizeof(GrayApp));
     memset(app, 0, sizeof(GrayApp));
-    app->mode = GrayModeTiPlanes;
+    app->mode = GrayModeStagger;
     app->show_hud = true;
     app->phase = 0;
 

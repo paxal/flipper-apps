@@ -39,12 +39,16 @@ python3 tools/gen_flipper_image.py
 
 | Mode | Kind | Notes |
 |------|------|-------|
-| **TI planes** | Temporal | Dual plane + 2:1 schedule (default) |
-| **Stagger** | Temporal | Same duties with `(x+y)%3` phase offset |
+| **Stagger** | Temporal | Same 3/3·2/3·1/3·0/3 duties with `(x+y)%3` phase offset (**default**) |
+| **TI planes** | Temporal | Dual plane + 2:1 schedule |
 | **HP Bayer** | Spatial | 2×2 ordered dither — no flicker |
 | **Thresh** | Static | Hard 1-bit clamp for comparison |
 
 Backlight stays on while the app runs so temporal modes are visible.
+
+### Device notes
+
+On a real Flipper LCD (release SDK), **Stagger** looks better than TI planes / Bayer for this demo: less objectionable flicker while keeping the four gray levels readable. Stick with the classic **3-tick 2:1** duties (dark = 2/3). A trial **4-tick** schedule that lightened dark gray to 50% made flicker worse, so it was dropped.
 
 ## Build
 
