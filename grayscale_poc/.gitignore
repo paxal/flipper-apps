@@ -1,0 +1,9 @@
+dist/
+.vscode/
+.clangd
+.clang-format
+*.o
+*.d
+test/test_gray2bit
+tools/__pycache__/
+__pycache__/

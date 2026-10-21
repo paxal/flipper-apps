@@ -1,0 +1,13 @@
+App(
+    appid="grayscale_poc",
+    name="Grayscale POC",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="grayscale_poc_app",
+    stack_size=2 * 1024,
+    fap_icon="grayscale_poc.png",
+    fap_category="Graphics",
+    fap_description="2-bit grayscale via temporal FRC on the 1-bit LCD",
+    fap_author="paxal",
+    fap_version="0.1",
+    sources=["grayscale_poc.c", "helpers/*.c"],
+)
