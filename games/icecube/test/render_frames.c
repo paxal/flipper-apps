@@ -199,15 +199,15 @@ int main(int argc, char** argv) {
         shot(dir, name, &game, packed);
     }
 
-    /* The HUD box in each corner, with the cube pushed into the opposite one. */
+    /* The HUD box in each corner (the picker is unit-tested), with the cube in
+     * the opposite corner of the map. */
     ice_game_load_stage(&game, 6);
     ice_game_start(&game);
     for(uint8_t c = 0; c < 4; c++) {
         game.px = (int16_t)((c & 1) ? ICE_TILE : 38 * ICE_TILE);
         game.py = (int16_t)((c & 2) ? ICE_TILE : 30 * ICE_TILE);
-        game.hud_corner = (uint8_t)(3 - c);
-        ice_game_update_view(&game);
-        snprintf(name, sizeof(name), "hud_%s", corner_names[game.hud_corner]);
+        game.hud_corner = c;
+        snprintf(name, sizeof(name), "hud_%s", corner_names[c]);
         shot(dir, name, &game, packed);
     }
 
