@@ -33,8 +33,15 @@ game-specific findings.
 ## Rendering
 
 - The 2-bit `gray2bit` path (stagger FRC, 3-tick period) costs one full-screen XBM
-  bake per 16 ms tick; keep game logic out of that path and only re-render the packed
-  frame when the state changed.
+  bake per 16 ms tick and flickers on moving content. Use it only for static
+  pictures; check whether the in-game tiles need gray at all (in Ice Cube a hard
+  threshold kept every tile legible) and show gameplay in 1-bit, baked only when a
+  frame changes.
+- Double-buffer the XBM: render and bake into the back buffer with no lock, then
+  take the mutex only to flip the front index. The draw callback then waits on
+  nothing but a pointer swap.
+- Key events should only mark the frame dirty; the next tick renders once, instead
+  of a full render per Press, Repeat and Release.
 - Shared helper: `games/icecube/helpers/gray2bit.[ch]` is a copy of the grayscale POC
   code. Any fix belongs in both until it is factored out.
 

@@ -56,14 +56,58 @@ disassembly under `ice1_1/disasm/`). Engine listing: `disasm/code/code_00041.asm
   in reading order; the original blacks out the other five, the port dims and frames.
 - Movement: a per-axis signed velocity changed by ±2 per frame while a key is held,
   clamped to ±8, **no friction**. The port uses ±1 per tick clamped to ±3 at 20
-  ticks/s. Because the original never loses speed on a bounce, a cube that touches a
-  wall at speed 1 drifts away forever; the port drops one speed unit per bounce and
-  holds still when the key is pushed into the wall.
+  ticks/s. Bounce walls negate the velocity with no loss, as in the original, so a
+  slow cube keeps drifting between walls; a tap the other way stops it. The port adds
+  one rule: if the key toward the wall is held (or tapped) in the tick of the impact,
+  the cube stops against the wall instead of bouncing, so it can be parked.
+- Collision: all four corners of the box are checked for lethal tiles before any
+  solid one, so a step that touches a block and water at once always kills.
 - The cube sprite is 4 states × 8 rows of (mask byte, pixel byte): AND the mask,
   OR the pixels. It is 8×8, drawn identically on both planes.
 - Viewport: 17×9 tiles drawn, the cube held at column 7 row 3 while scrolling.
   Pawns and score are never drawn; the HUD is the annunciators (ALERT = dynamite,
-  BUSY = under 20 s, TRANSMITTING = all pawns taken).
+  BUSY = under 20 s, TRANSMITTING = all pawns taken). The port shows 16×8 tiles,
+  the whole screen, with the camera leading 8 px (x) and 5 px (y) per unit of speed.
+  Lives, pawns (EXIT at zero) and dynamite sit in a 43×9 box in a screen corner. The
+  box moves when the cube comes within 12 px, to the corner farthest from the cube
+  that is not where the camera leads. It blinks inverted under 20 s.
+
+## Stage flow (`ICE.ENT.rpl`, PLAY secondary; route menu `code_25204.asm`)
+
+| LAM | Holds |
+|---|---|
+| 4 | time limit (HXS, BCD seconds) |
+| 5 | map GROB, passed to ICE.EXE without TOTEMPOB, so the engine edits it in place |
+| 6 | stage title |
+| 7 | score |
+| 8 | stage index, 0-based; also the number of passed stages |
+| 9 | 0x10 when CONTINUE is offered, else 0; reset after every menu |
+| 10 | lives |
+
+- Route menu: START (1) decodes the stage again into LAMs 4-6; CONTINUE (2) runs
+  ICE.EXE on the map as left; QUIT (3) leaves the game. CONTINUE is drawn only when
+  bit 4 of its argument (LAM 9 + LAM 8) is set.
+- After the comic, exit 0 (cleared) advances the stage and loads only its title.
+  Any other exit costs a life. Exit 1 (time out) stops there. Exits 2..5 (water,
+  worm, boom, quit) store the **remaining time** as the new limit and set LAM 9, so
+  CONTINUE resumes with the map as left, the remaining time, and (per the manual) a
+  new white cube without dynamite. Quitting a stage therefore costs a life in the
+  original too; the port does the same and goes to the route menu, whose QUIT
+  returns to the title.
+- The loop ends when lives reach 0 or the stage index reaches 12.
+- Passed stages: the menu fills the second plane at rows 15..43, x = 12·k for each
+  passed stage, over the scenery band of the route picture. The port turns white
+  pixels there dark gray.
+
+## Display
+
+- Gray (stagger FRC, baked every 16 ms) is used only on the title, route and comic
+  pictures. Play, pause, game over and win are shown thresholded (levels 0-1 black,
+  2-3 white), baked only when a frame changes. Measured on the tile bank: 35 of 192
+  tiles use gray and 26% of map cells use one, but all stay legible thresholded. The
+  tiles drawn only in gray are the EXIT sign (0x31, 0x32) and the accelerators
+  (0x34..0x37); they keep readable shapes. Bayer dithering made pawns and arrows
+  noisy. The pause and route pictures are single-plane anyway.
 
 ## Still guessed
 
@@ -74,8 +118,10 @@ disassembly under `ice1_1/disasm/`). Engine listing: `disasm/code/code_00041.asm
   the engine's frame rate.
 - Scoring (100 per pawn, 200 + 10/s per stage, life every 1000) is the port's; only
   the extra life per thousand points is in the manual.
-- The route map should blacken passed stages; the port only prints the title and
-  remaining cubes on it.
+- Passed stages on the route map: the manual says they "turn black"; the second
+  plane alone maps to light gray in `level_of()`, but the port uses dark gray so the
+  marks read clearly.
+- Feedback (sounds, vibration, LED) is the port's; the HP-48 had none.
 
 ## Tooling
 

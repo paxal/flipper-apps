@@ -270,7 +270,7 @@ static const uint8_t k_route_x1[IceRouteCount] = {43, 87, 127};
 static void draw_route_menu(uint8_t* packed, const IceGame* g) {
     for(int i = 0; i < IceRouteCount; i++) {
         uint8_t ink = ice_game_route_available(g, (IceRouteSel)i) ? GrayLevelBlack :
-                                                                   GrayLevelLight;
+                                                                    GrayLevelLight;
         if(i == g->route_sel) {
             continue;
         }
