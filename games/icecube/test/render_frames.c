@@ -122,14 +122,19 @@ static void write_png(const char* path, int w, int h, const uint8_t* gray, int s
     free(z);
 }
 
-static void save(const char* dir, const char* name, const uint8_t* packed) {
+/* Screens without gray are shown thresholded on the device; do the same here. */
+static void save(const char* dir, const char* name, const uint8_t* packed, IcePhase phase) {
     static const uint8_t gray_of[4] = {0, 85, 170, 255};
     uint8_t gray[GRAY2BIT_SCREEN_W * GRAY2BIT_SCREEN_H];
+    bool levels = ice_phase_uses_gray(phase);
     char path[512];
     for(int y = 0; y < GRAY2BIT_SCREEN_H; y++) {
         for(int x = 0; x < GRAY2BIT_SCREEN_W; x++) {
-            gray[y * GRAY2BIT_SCREEN_W + x] =
-                gray_of[gray2bit_get(packed, GRAY2BIT_SCREEN_W, (uint16_t)x, (uint16_t)y)];
+            uint8_t level = gray2bit_get(packed, GRAY2BIT_SCREEN_W, (uint16_t)x, (uint16_t)y);
+            if(!levels) {
+                level = level < GrayLevelLight ? GrayLevelBlack : GrayLevelWhite;
+            }
+            gray[y * GRAY2BIT_SCREEN_W + x] = gray_of[level];
         }
     }
     snprintf(path, sizeof(path), "%s/%s.png", dir, name);
@@ -137,50 +142,84 @@ static void save(const char* dir, const char* name, const uint8_t* packed) {
     printf("wrote %s\n", path);
 }
 
+static void shot(const char* dir, const char* name, const IceGame* game, uint8_t* packed) {
+    ice_render(game, packed);
+    save(dir, name, packed, game->phase);
+}
+
 int main(int argc, char** argv) {
     const char* dir = argc > 1 ? argv[1] : ".";
     static uint8_t packed[GRAY2BIT_PACKED_SIZE];
     static IceGame game;
-    char name[32];
+    static const char* const corner_names[4] = {"tl", "tr", "bl", "br"};
+    char name[48];
 
     crc_init();
     ice_game_init(&game);
-    ice_render(&game, packed);
-    save(dir, "title", packed);
+    shot(dir, "title", &game, packed);
 
     ice_game_begin(&game);
-    ice_render(&game, packed);
-    save(dir, "route", packed);
+    shot(dir, "route", &game, packed);
+    ice_game_route_move(&game, 1);
+    shot(dir, "route_sel_quit", &game, packed);
+    ice_game_route_move(&game, 1);
 
-    ice_game_start(&game);
-    ice_render(&game, packed);
-    save(dir, "play_stage01", packed);
+    ice_game_ack(&game);
+    shot(dir, "play_stage01", &game, packed);
 
     for(int i = 0; i < 60; i++) {
         ice_game_set_keys(&game, false, true, false, false);
         ice_game_tick(&game);
     }
-    ice_render(&game, packed);
-    save(dir, "play_stage01_moved", packed);
+    shot(dir, "play_stage01_moved", &game, packed);
 
     game.phase = IcePhasePause;
-    ice_render(&game, packed);
-    save(dir, "pause", packed);
+    shot(dir, "pause", &game, packed);
+
+    /* A quit leads to the route menu with CONTINUE selected. */
+    ice_game_quit_stage(&game);
+    ice_game_ack(&game);
+    shot(dir, "route_continue", &game, packed);
 
     for(int o = 0; o < 6; o++) {
         game.phase = IcePhaseComic;
         game.outcome = (IceOutcome)o;
-        ice_render(&game, packed);
         snprintf(name, sizeof(name), "comic_%d", o);
-        save(dir, name, packed);
+        shot(dir, name, &game, packed);
     }
 
     for(uint8_t s = 1; s < ICE_STAGE_COUNT; s++) {
         ice_game_load_stage(&game, s);
+        snprintf(name, sizeof(name), "route_stage%02u", (unsigned)s + 1);
+        if(s == 4 || s == 11) {
+            shot(dir, name, &game, packed); /* passed-stage marks */
+        }
         ice_game_start(&game);
-        ice_render(&game, packed);
         snprintf(name, sizeof(name), "play_stage%02u", (unsigned)s + 1);
-        save(dir, name, packed);
+        shot(dir, name, &game, packed);
     }
+
+    /* The HUD box in each corner, with the cube pushed into the opposite one. */
+    ice_game_load_stage(&game, 6);
+    ice_game_start(&game);
+    for(uint8_t c = 0; c < 4; c++) {
+        game.px = (int16_t)((c & 1) ? ICE_TILE : 38 * ICE_TILE);
+        game.py = (int16_t)((c & 2) ? ICE_TILE : 30 * ICE_TILE);
+        game.hud_corner = (uint8_t)(3 - c);
+        ice_game_update_view(&game);
+        snprintf(name, sizeof(name), "hud_%s", corner_names[game.hud_corner]);
+        shot(dir, name, &game, packed);
+    }
+
+    /* Under ICE_HURRY_SEC the box blinks inverted; all pawns taken shows EXIT. */
+    game.time_ticks = 10 * ICE_TICKS_PER_SEC;
+    game.pawns_left = 0;
+    game.dynamite = 2;
+    shot(dir, "hud_hurry_exit", &game, packed);
+
+    game.phase = IcePhaseGameOver;
+    shot(dir, "game_over", &game, packed);
+    game.phase = IcePhaseWin;
+    shot(dir, "win", &game, packed);
     return 0;
 }
