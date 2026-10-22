@@ -178,29 +178,47 @@ static void draw_world(uint8_t* packed, const IceGame* g) {
     }
 }
 
-static void draw_hud(uint8_t* packed, const IceGame* g) {
-    char buf[32];
-    const char* flag = "";
-
-    fill_rect(
-        packed, 0, ICE_VIEW_H, GRAY2BIT_SCREEN_W, GRAY2BIT_SCREEN_H - ICE_VIEW_H, GrayLevelWhite);
-    if(g->pawns_left == 0) {
-        flag = " EXIT";
-    } else if(g->dynamite > 0) {
-        flag = " ALERT";
-    } else if(ice_time_seconds(g) <= 20) {
-        flag = " BUSY";
+static void invert_rect(uint8_t* packed, int x0, int y0, int w, int h) {
+    for(int y = y0; y < y0 + h; y++) {
+        for(int x = x0; x < x0 + w; x++) {
+            if((unsigned)x < GRAY2BIT_SCREEN_W && (unsigned)y < GRAY2BIT_SCREEN_H) {
+                put_px(packed, x, y, (uint8_t)(GrayLevelWhite - get_px(packed, x, y)));
+            }
+        }
     }
-    snprintf(
-        buf,
-        sizeof(buf),
-        "L%u P%02u D%u %05lu%s",
-        (unsigned)g->lives,
-        (unsigned)g->pawns_left,
-        (unsigned)g->dynamite,
-        (unsigned long)g->score,
-        flag);
-    draw_text(packed, 2, ICE_VIEW_H + 2, buf, GrayLevelBlack, 1);
+}
+
+static void draw_box(uint8_t* packed, int x, int y, int w, int h) {
+    fill_rect(packed, x, y, w, h, GrayLevelBlack);
+    fill_rect(packed, x + 1, y + 1, w - 2, h - 2, GrayLevelWhite);
+}
+
+/* Lives, pawns (EXIT once all are taken) and dynamite in a small box that keeps
+ * to a corner away from the cube. Under ICE_HURRY_SEC the box blinks inverted. */
+static void draw_overlay(uint8_t* packed, const IceGame* g) {
+    char buf[16];
+    int16_t x;
+    int16_t y;
+    int16_t w;
+    int16_t h;
+
+    ice_game_hud_rect(g, &x, &y, &w, &h);
+    draw_box(packed, x, y, w, h);
+    if(g->pawns_left == 0) {
+        snprintf(buf, sizeof(buf), "L%u EXIT D%u", (unsigned)g->lives, (unsigned)g->dynamite);
+    } else {
+        snprintf(
+            buf,
+            sizeof(buf),
+            "L%u P%02u D%u",
+            (unsigned)g->lives,
+            (unsigned)g->pawns_left,
+            (unsigned)g->dynamite);
+    }
+    draw_text(packed, x + 2, y + 2, buf, GrayLevelBlack, 1);
+    if(ice_time_seconds(g) <= ICE_HURRY_SEC && (g->time_ticks / 10) % 2 == 0) {
+        invert_rect(packed, x, y, w, h);
+    }
 }
 
 /* Six 43x31 panels at x = 0, 44, 88 and y = 0, 33, in outcome order. */
@@ -235,12 +253,65 @@ static void draw_comic(uint8_t* packed, IceOutcome outcome) {
     }
 }
 
+/* Route menu boxes on the picture's bottom row (inverse video, rounded corners). */
+#define ROUTE_MENU_Y0 55
+#define ROUTE_MENU_Y1 63
+static const uint8_t k_route_x0[IceRouteCount] = {1, 45, 89};
+static const uint8_t k_route_x1[IceRouteCount] = {43, 87, 127};
+
+/* The original darkens one 12 px column of the scenery band per passed stage
+ * (code_25204: second plane, rows 15..43, x = 12 * k). */
+#define ROUTE_MARK_W  12
+#define ROUTE_MARK_Y0 15
+#define ROUTE_MARK_Y1 43
+
+/* The selected entry keeps its inverse box; the others become plain text, and an
+ * unavailable CONTINUE is drawn in light gray. */
+static void draw_route_menu(uint8_t* packed, const IceGame* g) {
+    for(int i = 0; i < IceRouteCount; i++) {
+        uint8_t ink = ice_game_route_available(g, (IceRouteSel)i) ? GrayLevelBlack :
+                                                                   GrayLevelLight;
+        if(i == g->route_sel) {
+            continue;
+        }
+        for(int y = ROUTE_MENU_Y0; y <= ROUTE_MENU_Y1; y++) {
+            for(int x = k_route_x0[i]; x <= k_route_x1[i]; x++) {
+                bool border = y == ROUTE_MENU_Y0 || y == ROUTE_MENU_Y1;
+                bool text = !border && get_px(packed, x, y) == GrayLevelWhite;
+                put_px(packed, x, y, text ? ink : GrayLevelWhite);
+            }
+        }
+    }
+}
+
 static void draw_route(uint8_t* packed, const IceGame* g) {
     char line[8];
+    int passed = g->custom ? 0 : g->stage;
+
     draw_picture(packed, ice_pic_route);
+    for(int y = ROUTE_MARK_Y0; y <= ROUTE_MARK_Y1; y++) {
+        for(int x = 0; x < passed * ROUTE_MARK_W && x < GRAY2BIT_SCREEN_W; x++) {
+            if(get_px(packed, x, y) == GrayLevelWhite) {
+                put_px(packed, x, y, GrayLevelDark);
+            }
+        }
+    }
     draw_centered(packed, 1, g->name, GrayLevelBlack, 1);
     snprintf(line, sizeof(line), "%u", (unsigned)g->lives);
     draw_text(packed, 64, 47, line, GrayLevelBlack, 1);
+    draw_route_menu(packed, g);
+}
+
+static void draw_pause(uint8_t* packed) {
+    draw_picture(packed, ice_pic_pause);
+    fill_rect(packed, 0, 56, 71, 8, GrayLevelWhite);
+    fill_rect(packed, 0, 56, 71, 1, GrayLevelBlack);
+    fill_rect(packed, 70, 56, 1, 8, GrayLevelBlack);
+    draw_text(packed, 2, 58, "OK:PLAY BACK:QUIT", GrayLevelBlack, 1);
+}
+
+bool ice_phase_uses_gray(IcePhase phase) {
+    return phase == IcePhaseTitle || phase == IcePhaseComic || phase == IcePhaseRoute;
 }
 
 void ice_render(const IceGame* g, uint8_t* packed) {
@@ -251,10 +322,10 @@ void ice_render(const IceGame* g, uint8_t* packed) {
     switch(g->phase) {
     case IcePhasePlay:
         draw_world(packed, g);
-        draw_hud(packed, g);
+        draw_overlay(packed, g);
         return;
     case IcePhasePause:
-        draw_picture(packed, ice_pic_pause);
+        draw_pause(packed);
         return;
     case IcePhaseRoute:
         draw_route(packed, g);
