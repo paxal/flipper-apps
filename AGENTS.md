@@ -17,14 +17,18 @@ Repo for Flipper Zero external apps (FAPs). Prefer **uFBT** over full-firmware F
 
 ## Quick commands
 
+Every app directory has a `Makefile` that includes `mk/app.mk`; the repo root
+`Makefile` fans the same targets out to all apps.
+
 ```bash
 python3 -m pip install --upgrade ufbt   # ensure ~/.local/bin on PATH
-ufbt update --channel=release
-ufbt                                    # → dist/*.fap
-ufbt lint
-ufbt format
-make -C test                            # host tests, if present
-ufbt launch                             # device: build + upload + run
+make -C <app> update                    # ufbt update --channel=release
+make -C <app> build                     # → <app>/dist/*.fap
+make -C <app> test                      # host tests, if present
+make -C <app> lint                      # make -C <app> format to fix
+make -C <app> launch                    # device: build + upload + run
+make -C <app> help                      # all targets, incl. app-specific ones
+make test | make build                  # same for every app, from the repo root
 ufbt cli                                # then: log / log info
 ```
 
@@ -33,3 +37,5 @@ ufbt cli                                # then: log / log info
 For create/build/CI/debug details, use the project skill:
 
 `.cursor/skills/flipper-fap-build/SKILL.md`
+
+Cross-app lessons (input queue sizing, tap latching, wall-clock logic, host PNG rendering): `NOTES.md`.

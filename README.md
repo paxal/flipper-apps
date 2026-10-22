@@ -7,8 +7,21 @@ Games live under [`games/`](games/).
 ## Agent guidance
 
 - Always-on: [`AGENTS.md`](AGENTS.md)
+- Cross-app lessons (input queues, tap latching, host rendering): [`NOTES.md`](NOTES.md)
 - Build/test skill: [`.cursor/skills/flipper-fap-build/SKILL.md`](.cursor/skills/flipper-fap-build/SKILL.md)
 - Babal render-test skill: [`.cursor/skills/babal-render-tests/SKILL.md`](.cursor/skills/babal-render-tests/SKILL.md)
+
+## Build, test, upload
+
+Each app has a `Makefile` on top of [`mk/app.mk`](mk/app.mk); the root `Makefile` runs
+the same targets for all apps.
+
+```bash
+make test                       # host tests of every app, no SDK needed
+make build                      # ufbt build of every app
+make -C games/icecube launch    # build + upload + run on a USB-connected Flipper
+make -C games/icecube help      # all targets for that app
+```
 
 ## Quick start (single app)
 

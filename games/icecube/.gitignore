@@ -1,0 +1,10 @@
+dist/
+.ufbt/
+.vscode/
+.clangd
+.clang-format
+test/test_game
+*.o
+*.d
+test/render_frames
+test/frames/
